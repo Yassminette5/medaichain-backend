@@ -1,0 +1,135 @@
+import {
+    IsEmail,
+    IsString,
+    MinLength,
+    IsEnum,
+    IsPhoneNumber,
+    IsNotEmpty,
+    IsOptional,
+} from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { UserRole } from '../../users/schemas/user.schema';
+
+export class RegisterDto {
+    @ApiProperty({ example: 'medecin@example.com' })
+    @IsEmail({}, { message: 'Email invalide' })
+    email: string;
+
+    @ApiProperty({ example: 'Password123!' })
+    @IsString()
+    @MinLength(8, { message: 'Le mot de passe doit contenir au moins 8 caractères' })
+    password: string;
+
+    @ApiProperty({ example: '+213555123456' })
+    @IsString()
+    @IsNotEmpty({ message: 'Le numéro de téléphone est requis' })
+    phone: string;
+
+    @ApiProperty({ enum: UserRole, example: UserRole.MEDECIN })
+    @IsEnum(UserRole, { message: 'Rôle invalide' })
+    role: UserRole;
+
+    // Champs optionnels pour Médecin / Patient
+    @ApiProperty({ example: 'Jean', required: false })
+    @IsString()
+    @IsOptional()
+    firstName?: string;
+
+    @ApiProperty({ example: 'Dupont', required: false })
+    @IsString()
+    @IsOptional()
+    lastName?: string;
+
+    @ApiProperty({ example: 'Cardiologie', required: false })
+    @IsString()
+    @IsOptional()
+    speciality?: string;
+
+    @ApiProperty({ example: 'CHU Tlemcen', required: false })
+    @IsString()
+    @IsOptional()
+    hospital?: string;
+
+    @ApiProperty({ example: '12345/DZ', required: false })
+    @IsString()
+    @IsOptional()
+    licenseNumber?: string;
+
+    @ApiProperty({ example: 'Tlemcen', required: false })
+    @IsString()
+    @IsOptional()
+    wilaya?: string;
+
+    // Champs pour Centre d'Analyse
+    @ApiProperty({ example: 'Laboratoire Alpha', required: false })
+    @IsString()
+    @IsOptional()
+    centreName?: string;
+
+    @ApiProperty({ example: 'Biologie', required: false })
+    @IsString()
+    @IsOptional()
+    categorie?: string;
+
+    @ApiProperty({ example: 'Alger', required: false })
+    @IsString()
+    @IsOptional()
+    localisation?: string;
+
+    // Champs pour Pharmacie
+    @ApiProperty({ example: 'Pharmacie El Amel', required: false })
+    @IsString()
+    @IsOptional()
+    pharmacyName?: string;
+
+    @ApiProperty({ example: 'Alger', required: false })
+    @IsString()
+    @IsOptional()
+    gouvernorat?: string;
+
+    @ApiProperty({ example: 'Bab El Oued', required: false })
+    @IsString()
+    @IsOptional()
+    delegation?: string;
+
+    @ApiProperty({ example: '12 Rue de la Liberté', required: false })
+    @IsString()
+    @IsOptional()
+    address?: string;
+}
+
+export class LoginDto {
+    @ApiProperty({ example: 'medecin@example.com' })
+    @IsEmail({}, { message: 'Email invalide' })
+    email: string;
+
+    @ApiProperty({ example: 'Password123!' })
+    @IsString()
+    @IsNotEmpty({ message: 'Le mot de passe est requis' })
+    password: string;
+}
+
+export class ForgotPasswordDto {
+    @ApiProperty({ example: 'medecin@example.com' })
+    @IsEmail({}, { message: 'Email invalide' })
+    email: string;
+}
+
+export class ResetPasswordDto {
+    @ApiProperty({ example: 'abc123token' })
+    @IsString()
+    @IsNotEmpty()
+    token: string;
+
+    @ApiProperty({ example: 'NewPassword123!' })
+    @IsString()
+    @MinLength(8, { message: 'Le mot de passe doit contenir au moins 8 caractères' })
+    newPassword: string;
+}
+
+export class RefreshTokenDto {
+    @ApiProperty()
+    @IsString()
+    @IsNotEmpty()
+    refreshToken: string;
+}

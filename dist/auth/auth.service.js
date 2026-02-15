@@ -51,6 +51,7 @@ let AuthService = class AuthService {
                     speciality: registerDto.speciality || '',
                     wilaya: registerDto.wilaya,
                     city: registerDto.wilaya,
+                    yearsOfExperience: registerDto.yearsOfExperience,
                 });
             }
             else if (registerDto.role === user_schema_1.UserRole.CENTRE_ANALYSE) {
@@ -65,7 +66,7 @@ let AuthService = class AuthService {
             else if (registerDto.role === user_schema_1.UserRole.PHARMACIE) {
                 await this.profilesService.upsertPharmacyProfile(user._id.toString(), {
                     pharmacyName: registerDto.pharmacyName || '',
-                    ownerName: '',
+                    ownerName: registerDto.ownerName || '',
                     licenseNumber: registerDto.licenseNumber || '',
                     address: registerDto.address || '',
                     city: registerDto.delegation || '',

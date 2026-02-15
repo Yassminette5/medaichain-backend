@@ -75,6 +75,11 @@ __decorate([
     __metadata("design:type", String)
 ], RegisterDto.prototype, "wilaya", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ example: 5, required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], RegisterDto.prototype, "yearsOfExperience", void 0);
+__decorate([
     (0, swagger_1.ApiProperty)({ example: 'Laboratoire Alpha', required: false }),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
@@ -98,6 +103,12 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "pharmacyName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Dr. Pharmacien', required: false }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], RegisterDto.prototype, "ownerName", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'Alger', required: false }),
     (0, class_validator_1.IsString)(),

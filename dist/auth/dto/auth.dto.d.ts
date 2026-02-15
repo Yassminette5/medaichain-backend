@@ -10,10 +10,12 @@ export declare class RegisterDto {
     hospital?: string;
     licenseNumber?: string;
     wilaya?: string;
+    yearsOfExperience?: number;
     centreName?: string;
     categorie?: string;
     localisation?: string;
     pharmacyName?: string;
+    ownerName?: string;
     gouvernorat?: string;
     delegation?: string;
     address?: string;

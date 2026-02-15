@@ -65,6 +65,7 @@ export class AuthService {
                     speciality: registerDto.speciality || '',
                     wilaya: registerDto.wilaya,
                     city: registerDto.wilaya, // Mapper wilaya vers city pour l'instant
+                    yearsOfExperience: registerDto.yearsOfExperience,
                 });
             } else if (registerDto.role === UserRole.CENTRE_ANALYSE) {
                 await this.profilesService.upsertLabProfile(user._id.toString(), {
@@ -77,7 +78,7 @@ export class AuthService {
             } else if (registerDto.role === UserRole.PHARMACIE) {
                 await this.profilesService.upsertPharmacyProfile(user._id.toString(), {
                     pharmacyName: registerDto.pharmacyName || '',
-                    ownerName: '',
+                    ownerName: registerDto.ownerName || '',
                     licenseNumber: registerDto.licenseNumber || '',
                     address: registerDto.address || '',
                     city: registerDto.delegation || '',

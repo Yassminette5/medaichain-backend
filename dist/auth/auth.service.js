@@ -14,6 +14,7 @@ const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const config_1 = require("@nestjs/config");
 const bcrypt = require("bcryptjs");
+const uuid_1 = require("uuid");
 const users_service_1 = require("../users/users.service");
 const user_schema_1 = require("../users/schemas/user.schema");
 const mail_service_1 = require("./mail.service");
@@ -160,6 +161,162 @@ let AuthService = class AuthService {
     async completeProfile(userId) {
         await this.usersService.markProfileCompleted(userId);
         return { message: 'Profil complété' };
+    }
+    async completeInvite(dto) {
+        throw new common_1.BadRequestException("L'email est requis pour la finalisation (ajoutez-le au DTO ou au formulaire)");
+    }
+    async registerFromInvite(dto, email, role) {
+        console.log(`[RegisterFromInvite] Tentative d'inscription pour ${email} avec le rôle ${role}`);
+        const existingUser = await this.usersService.findByEmail(email);
+        if (existingUser) {
+            console.log(`[RegisterFromInvite] Email ${email} déjà existant`);
+            throw new common_1.ConflictException('Cet compte existe déjà');
+        }
+        const hashedPassword = await bcrypt.hash(dto.password, 10);
+        console.log(`[RegisterFromInvite] Création de l'utilisateur...`);
+        let user;
+        try {
+            user = await this.usersService.create({
+                email: email,
+                password: hashedPassword,
+                phone: dto.phone,
+                role: role,
+                isProfileCompleted: true,
+            });
+        }
+        catch (error) {
+            if (error.code === 11000 && error.keyPattern && error.keyPattern.phone) {
+                console.log(`[RegisterFromInvite] Téléphone ${dto.phone} déjà existant`);
+                throw new common_1.ConflictException('Ce numéro de téléphone est déjà utilisé par un autre compte.');
+            }
+            throw error;
+        }
+        console.log(`[RegisterFromInvite] Utilisateur créé avec ID: ${user._id}`);
+        await this.createProfileForRole(user._id.toString(), role, dto, email);
+        console.log(`[RegisterFromInvite] Profil créé/mis à jour.`);
+        return this.generateTokens(user);
+    }
+    async createProfileForRole(userId, role, dto, email) {
+        try {
+            if (role === 'medecin') {
+                await this.profilesService.upsertDoctorProfile(userId, {
+                    firstName: dto.firstName || '',
+                    lastName: dto.lastName || '',
+                    speciality: dto.speciality || '',
+                    wilaya: dto.wilaya,
+                    city: dto.wilaya,
+                    yearsOfExperience: dto.yearsOfExperience,
+                });
+            }
+            else if (role === 'centre_analyse') {
+                await this.profilesService.upsertLabProfile(userId, {
+                    centreName: dto.centreName || '',
+                    categorie: dto.categorie || '',
+                    phone: dto.phone,
+                    email: email,
+                    localisation: dto.localisation || '',
+                });
+            }
+            else if (role === 'pharmacie') {
+                await this.profilesService.upsertPharmacyProfile(userId, {
+                    pharmacyName: dto.pharmacyName || '',
+                    ownerName: dto.ownerName || '',
+                    licenseNumber: dto.licenseNumber || '',
+                    address: dto.address || '',
+                    city: dto.delegation || '',
+                    wilaya: dto.gouvernorat || '',
+                });
+            }
+        }
+        catch (error) {
+            console.error('Erreur création profil:', error);
+        }
+    }
+    async sendInvitation(inviteDto) {
+        if (inviteDto.role === 'patient') {
+            throw new common_1.BadRequestException('Les patients s\'inscrivent directement via l\'application mobile');
+        }
+        const existingUser = await this.usersService.findByEmail(inviteDto.email);
+        if (existingUser) {
+            throw new common_1.ConflictException('Cet email est déjà utilisé');
+        }
+        const inviteToken = (0, uuid_1.v4)();
+        await this.mailService.sendInvitationEmail(inviteDto.email, inviteDto.role, inviteToken);
+        return {
+            message: `Invitation envoyée avec succès à ${inviteDto.email}`,
+            inviteToken,
+            role: inviteDto.role,
+        };
+    }
+    async createUserByAdmin(dto) {
+        if (dto.role === 'patient') {
+            throw new common_1.BadRequestException('Les patients s\'inscrivent directement via l\'application mobile');
+        }
+        const existingUser = await this.usersService.findByEmail(dto.email);
+        if (existingUser) {
+            throw new common_1.ConflictException('Cet email est déjà utilisé');
+        }
+        const existingPhone = await this.usersService.findByPhone(dto.phone);
+        if (existingPhone) {
+            throw new common_1.ConflictException('Ce numéro de téléphone est déjà utilisé');
+        }
+        const rawPassword = this.generateRandomPassword(12);
+        const hashedPassword = await bcrypt.hash(rawPassword, 10);
+        const user = await this.usersService.create({
+            email: dto.email,
+            password: hashedPassword,
+            phone: dto.phone,
+            role: dto.role,
+            isProfileCompleted: false,
+        });
+        try {
+            if (dto.role === user_schema_1.UserRole.MEDECIN) {
+                await this.profilesService.upsertDoctorProfile(user._id.toString(), {
+                    firstName: dto.firstName || '',
+                    lastName: dto.lastName || '',
+                    speciality: dto.speciality || '',
+                    wilaya: dto.wilaya,
+                    city: dto.wilaya,
+                    yearsOfExperience: dto.yearsOfExperience,
+                });
+            }
+            else if (dto.role === user_schema_1.UserRole.CENTRE_ANALYSE) {
+                await this.profilesService.upsertLabProfile(user._id.toString(), {
+                    centreName: dto.centreName || '',
+                    categorie: dto.categorie || '',
+                    phone: dto.phone,
+                    email: dto.email,
+                    localisation: dto.localisation || '',
+                });
+            }
+            else if (dto.role === user_schema_1.UserRole.PHARMACIE) {
+                await this.profilesService.upsertPharmacyProfile(user._id.toString(), {
+                    pharmacyName: dto.pharmacyName || '',
+                    ownerName: dto.ownerName || '',
+                    licenseNumber: dto.licenseNumber || '',
+                    address: dto.address || '',
+                    city: dto.delegation || '',
+                    wilaya: dto.gouvernorat || '',
+                });
+            }
+        }
+        catch (error) {
+            console.error('Erreur lors de la création du profil', error);
+        }
+        await this.mailService.sendCredentialsEmail(dto.email, rawPassword, dto.role);
+        return {
+            message: `Compte ${dto.role} créé avec succès pour ${dto.email}`,
+            user: this.sanitizeUser(user),
+            generatedPassword: rawPassword,
+        };
+    }
+    generateRandomPassword(length) {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
+        let password = '';
+        for (let i = 0; i < length; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return password;
     }
     async generateTokens(user) {
         const payload = {

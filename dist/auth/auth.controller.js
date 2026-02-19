@@ -43,6 +43,21 @@ let AuthController = class AuthController {
     async completeProfile(req) {
         return this.authService.completeProfile(req.user.sub);
     }
+    async sendInvitation(inviteDto) {
+        return this.authService.sendInvitation(inviteDto);
+    }
+    async adminInvite(inviteDto) {
+        return this.authService.sendInvitation(inviteDto);
+    }
+    async completeInvite(dto, email, role) {
+        if (!email || !role) {
+            throw new common_1.BadRequestException('Email et Role sont requis');
+        }
+        return this.authService.registerFromInvite(dto, email, role);
+    }
+    async adminCreateUser(dto) {
+        return this.authService.createUserByAdmin(dto);
+    }
 };
 exports.AuthController = AuthController;
 __decorate([
@@ -122,6 +137,53 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "completeProfile", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, common_1.Post)('invite'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Envoyer une invitation par email à un professionnel' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Invitation envoyée avec succès' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Rôle invalide (patient non autorisé)' }),
+    (0, swagger_1.ApiResponse)({ status: 409, description: 'Email déjà utilisé' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [auth_dto_1.InviteDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "sendInvitation", null);
+__decorate([
+    (0, common_1.Post)('admin/invite'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Envoyer une invitation (Dashboard Admin)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Invitation envoyée' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [auth_dto_1.InviteDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "adminInvite", null);
+__decorate([
+    (0, common_1.Post)('complete-invite'),
+    (0, swagger_1.ApiOperation)({ summary: 'Finaliser l\'inscription via invitation' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Compte créé avec succès' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Query)('email')),
+    __param(2, (0, common_1.Query)('role')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [auth_dto_1.CompleteInviteDto, String, String]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "completeInvite", null);
+__decorate([
+    (0, common_1.Post)('admin/create-user'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({ summary: 'Créer un compte utilisateur par l\'admin' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Compte créé et identifiants envoyés par email' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Rôle patient non autorisé' }),
+    (0, swagger_1.ApiResponse)({ status: 409, description: 'Email ou téléphone déjà utilisé' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [auth_dto_1.AdminCreateUserDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "adminCreateUser", null);
 exports.AuthController = AuthController = __decorate([
     (0, swagger_1.ApiTags)('Authentification'),
     (0, common_1.Controller)('auth'),

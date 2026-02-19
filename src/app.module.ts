@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ProfilesModule } from './profiles/profiles.module';
@@ -11,6 +13,11 @@ import { ProfilesModule } from './profiles/profiles.module';
         ConfigModule.forRoot({
             isGlobal: true,
             envFilePath: '.env',
+        }),
+
+        // Serve admin dashboard static files
+        ServeStaticModule.forRoot({
+            rootPath: join(__dirname, '..', 'public'),
         }),
 
         // MongoDB
@@ -29,3 +36,4 @@ import { ProfilesModule } from './profiles/profiles.module';
     ],
 })
 export class AppModule { }
+

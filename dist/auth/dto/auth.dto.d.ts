@@ -1,4 +1,8 @@
 import { UserRole } from '../../users/schemas/user.schema';
+export declare class AuthCredentialsDto {
+    email: string;
+    password: string;
+}
 export declare class RegisterDto {
     email: string;
     password: string;
@@ -33,4 +37,46 @@ export declare class ResetPasswordDto {
 }
 export declare class RefreshTokenDto {
     refreshToken: string;
+}
+export declare class InviteDto {
+    email: string;
+    role: UserRole;
+}
+export declare class CompleteInviteDto {
+    token: string;
+    password: string;
+    firstName?: string;
+    lastName?: string;
+    phone: string;
+    speciality?: string;
+    wilaya?: string;
+    yearsOfExperience?: number;
+    centreName?: string;
+    categorie?: string;
+    localisation?: string;
+    pharmacyName?: string;
+    ownerName?: string;
+    licenseNumber?: string;
+    address?: string;
+    gouvernorat?: string;
+    delegation?: string;
+}
+export declare class AdminCreateUserDto {
+    email: string;
+    phone: string;
+    role: UserRole;
+    firstName?: string;
+    lastName?: string;
+    speciality?: string;
+    licenseNumber?: string;
+    wilaya?: string;
+    yearsOfExperience?: number;
+    centreName?: string;
+    categorie?: string;
+    localisation?: string;
+    pharmacyName?: string;
+    ownerName?: string;
+    gouvernorat?: string;
+    delegation?: string;
+    address?: string;
 }

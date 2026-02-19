@@ -4,4 +4,6 @@ export declare class MailService {
     private transporter;
     constructor(configService: ConfigService);
     sendPasswordResetEmail(email: string, code: string): Promise<void>;
+    sendInvitationEmail(email: string, role: string, inviteToken: string): Promise<void>;
+    sendCredentialsEmail(email: string, password: string, role: string): Promise<void>;
 }

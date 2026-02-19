@@ -1,5 +1,5 @@
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto, RefreshTokenDto } from './dto/auth.dto';
+import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto, RefreshTokenDto, InviteDto, AdminCreateUserDto, CompleteInviteDto } from './dto/auth.dto';
 export declare class AuthController {
     private readonly authService;
     constructor(authService: AuthService);
@@ -28,5 +28,24 @@ export declare class AuthController {
     getProfile(req: any): Promise<any>;
     completeProfile(req: any): Promise<{
         message: string;
+    }>;
+    sendInvitation(inviteDto: InviteDto): Promise<{
+        message: string;
+        inviteToken: any;
+        role: string;
+    }>;
+    adminInvite(inviteDto: InviteDto): Promise<{
+        message: string;
+        inviteToken: any;
+        role: string;
+    }>;
+    completeInvite(dto: CompleteInviteDto, email: string, role: string): Promise<{
+        accessToken: string;
+        refreshToken: string;
+    }>;
+    adminCreateUser(dto: AdminCreateUserDto): Promise<{
+        message: string;
+        user: any;
+        generatedPassword: string;
     }>;
 }

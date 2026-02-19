@@ -16,10 +16,52 @@ exports.UsersService = void 0;
 const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
+const bcrypt = require("bcryptjs");
 const user_schema_1 = require("./schemas/user.schema");
 let UsersService = class UsersService {
     constructor(userModel) {
         this.userModel = userModel;
+    }
+    async onModuleInit() {
+        await this.seedAdmin();
+    }
+    async seedAdmin() {
+        const adminEmail = 'admin@medaichain.com';
+        const adminExists = await this.userModel.findOne({ email: adminEmail }).exec();
+        if (!adminExists) {
+            console.log('Seeding admin user...');
+            const hashedPassword = await bcrypt.hash('admin123', 10);
+            await this.userModel.create({
+                email: adminEmail,
+                password: hashedPassword,
+                phone: '00000000',
+                role: user_schema_1.UserRole.ADMIN,
+                isProfileCompleted: true,
+                isEmailVerified: true,
+            });
+            console.log('Admin user created: admin@medaichain.com / admin123');
+        }
+    }
+    async getStats() {
+        const totalUsers = await this.userModel.countDocuments().exec();
+        const byRole = await this.userModel.aggregate([
+            { $group: { _id: '$role', count: { $sum: 1 } } }
+        ]).exec();
+        const stats = {
+            total: totalUsers,
+            medecin: 0,
+            patient: 0,
+            pharmacie: 0,
+            centre_analyse: 0,
+            clinique: 0,
+            admin: 0
+        };
+        byRole.forEach(item => {
+            if (stats.hasOwnProperty(item._id)) {
+                stats[item._id] = item.count;
+            }
+        });
+        return stats;
     }
     async findById(id) {
         const user = await this.userModel.findById(id).exec();
@@ -64,6 +106,9 @@ let UsersService = class UsersService {
             resetPasswordToken: null,
             resetPasswordExpires: null,
         }).exec();
+    }
+    async findAll() {
+        return this.userModel.find().sort({ createdAt: -1 }).exec();
     }
     async markProfileCompleted(userId) {
         await this.userModel.findByIdAndUpdate(userId, { isProfileCompleted: true }).exec();

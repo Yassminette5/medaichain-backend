@@ -1,8 +1,20 @@
+import { OnModuleInit } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { User, UserDocument } from './schemas/user.schema';
-export declare class UsersService {
+export declare class UsersService implements OnModuleInit {
     private userModel;
     constructor(userModel: Model<UserDocument>);
+    onModuleInit(): Promise<void>;
+    seedAdmin(): Promise<void>;
+    getStats(): Promise<{
+        total: number;
+        medecin: number;
+        patient: number;
+        pharmacie: number;
+        centre_analyse: number;
+        clinique: number;
+        admin: number;
+    }>;
     findById(id: string): Promise<UserDocument>;
     findByEmail(email: string): Promise<UserDocument | null>;
     findByPhone(phone: string): Promise<UserDocument | null>;
@@ -12,5 +24,6 @@ export declare class UsersService {
     setResetPasswordToken(userId: string, token: string, expires: Date): Promise<void>;
     findByResetToken(token: string): Promise<UserDocument | null>;
     clearResetToken(userId: string): Promise<void>;
+    findAll(): Promise<UserDocument[]>;
     markProfileCompleted(userId: string): Promise<void>;
 }

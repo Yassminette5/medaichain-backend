@@ -7,15 +7,21 @@ import {
     Request,
     HttpCode,
     HttpStatus,
+    Query,
+    BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import {
+    AuthCredentialsDto,
     RegisterDto,
     LoginDto,
     ForgotPasswordDto,
     ResetPasswordDto,
     RefreshTokenDto,
+    InviteDto,
+    AdminCreateUserDto,
+    CompleteInviteDto,
 } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
@@ -86,4 +92,46 @@ export class AuthController {
     async completeProfile(@Request() req) {
         return this.authService.completeProfile(req.user.sub);
     }
+
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @Post('invite')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Envoyer une invitation par email à un professionnel' })
+    @ApiResponse({ status: 200, description: 'Invitation envoyée avec succès' })
+    @ApiResponse({ status: 400, description: 'Rôle invalide (patient non autorisé)' })
+    @ApiResponse({ status: 409, description: 'Email déjà utilisé' })
+    async sendInvitation(@Body() inviteDto: InviteDto) {
+        return this.authService.sendInvitation(inviteDto);
+    }
+
+    @Post('admin/invite')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Envoyer une invitation (Dashboard Admin)' })
+    @ApiResponse({ status: 200, description: 'Invitation envoyée' })
+    async adminInvite(@Body() inviteDto: InviteDto) {
+        return this.authService.sendInvitation(inviteDto);
+    }
+
+    @Post('complete-invite')
+    @ApiOperation({ summary: 'Finaliser l\'inscription via invitation' })
+    @ApiResponse({ status: 201, description: 'Compte créé avec succès' })
+    async completeInvite(@Body() dto: CompleteInviteDto, @Query('email') email: string, @Query('role') role: string) {
+        if (!email || !role) {
+            throw new BadRequestException('Email et Role sont requis');
+        }
+        return this.authService.registerFromInvite(dto, email, role);
+    }
+
+    @Post('admin/create-user')
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Créer un compte utilisateur par l\'admin' })
+    @ApiResponse({ status: 201, description: 'Compte créé et identifiants envoyés par email' })
+    @ApiResponse({ status: 400, description: 'Rôle patient non autorisé' })
+    @ApiResponse({ status: 409, description: 'Email ou téléphone déjà utilisé' })
+    async adminCreateUser(@Body() dto: AdminCreateUserDto) {
+
+        return this.authService.createUserByAdmin(dto);
+    }
 }
+

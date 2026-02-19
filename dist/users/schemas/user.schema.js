@@ -18,6 +18,7 @@ var UserRole;
     UserRole["PHARMACIE"] = "pharmacie";
     UserRole["CENTRE_ANALYSE"] = "centre_analyse";
     UserRole["CLINIQUE"] = "clinique";
+    UserRole["ADMIN"] = "admin";
 })(UserRole || (exports.UserRole = UserRole = {}));
 let User = class User {
 };

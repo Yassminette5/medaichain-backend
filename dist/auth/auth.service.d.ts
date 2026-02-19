@@ -1,7 +1,7 @@
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
-import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto } from './dto/auth.dto';
+import { RegisterDto, CompleteInviteDto, LoginDto, ForgotPasswordDto, ResetPasswordDto } from './dto/auth.dto';
 import { MailService } from './mail.service';
 import { ProfilesService } from '../profiles/profiles.service';
 export declare class AuthService {
@@ -37,6 +37,26 @@ export declare class AuthService {
     completeProfile(userId: string): Promise<{
         message: string;
     }>;
+    completeInvite(dto: CompleteInviteDto): Promise<void>;
+    registerFromInvite(dto: CompleteInviteDto, email: string, role: string): Promise<{
+        accessToken: string;
+        refreshToken: string;
+    }>;
+    private createProfileForRole;
+    sendInvitation(inviteDto: {
+        email: string;
+        role: string;
+    }): Promise<{
+        message: string;
+        inviteToken: any;
+        role: string;
+    }>;
+    createUserByAdmin(dto: any): Promise<{
+        message: string;
+        user: any;
+        generatedPassword: string;
+    }>;
+    private generateRandomPassword;
     private generateTokens;
     private sanitizeUser;
 }

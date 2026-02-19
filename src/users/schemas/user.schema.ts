@@ -7,6 +7,7 @@ export enum UserRole {
     PHARMACIE = 'pharmacie',
     CENTRE_ANALYSE = 'centre_analyse',
     CLINIQUE = 'clinique',
+    ADMIN = 'admin',
 }
 
 export type UserDocument = User & Document;

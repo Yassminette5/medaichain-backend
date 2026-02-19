@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEDAIChain — Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <span class="material-icons-round">local_hospital</span>
+                    </div>
+                    <div class="logo-text">
+                        <h1>MEDAIChain</h1>
+                        <span>Admin Panel</span>
+                    </div>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-section="dashboard">
+                    <span class="material-icons-round">dashboard</span>
+                    <span>Tableau de bord</span>
+                </a>
+                <a href="#" class="nav-item" data-section="create-user">
+                    <span class="material-icons-round">person_add</span>
+                    <span>Envoyer Invitation</span>
+                </a>
+                <a href="#" class="nav-item" data-section="users-list">
+                    <span class="material-icons-round">people</span>
+                    <span>Utilisateurs</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="#" class="nav-item" id="logout-btn" style="color: #ff6b6b;">
+                    <span class="material-icons-round">logout</span>
+                    <span>Déconnexion</span>
+                </a>
+                <div class="admin-badge" style="margin-top: 10px;">
+                    <span class="material-icons-round">admin_panel_settings</span>
+                    <span>Administrateur</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <h2 id="page-title">Envoyer une invitation</h2>
+                    <p id="page-subtitle">Envoyez un lien d'inscription par email aux professionnels de santé</p>
+                </div>
+            </header>
+
+            <!-- Dashboard Stats Section -->
+            <section id="section-dashboard" class="content-section active">
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+                    <button id="refresh-stats-btn" class="btn-secondary">
+                        <span class="material-icons-round">refresh</span>
+                        Actualiser les statistiques
+                    </button>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon medecin-bg"><span class="material-icons-round">medical_services</span>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Médecins</h3>
+                            <p class="stat-value" id="stat-medecin">-</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon patient-bg"><span class="material-icons-round">person</span></div>
+                        <div class="stat-info">
+                            <h3>Patients</h3>
+                            <p class="stat-value" id="stat-patient">-</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon pharmacie-bg"><span class="material-icons-round">local_pharmacy</span>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Pharmacies</h3>
+                            <p class="stat-value" id="stat-pharmacie">-</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon analyse-bg"><span class="material-icons-round">science</span></div>
+                        <div class="stat-info">
+                            <h3>Laboratoires</h3>
+                            <p class="stat-value" id="stat-centre_analyse">-</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon clinique-bg"><span class="material-icons-round">apartment</span></div>
+                        <div class="stat-info">
+                            <h3>Cliniques</h3>
+                            <p class="stat-value" id="stat-clinique">-</p>
+                        </div>
+                    </div>
+                    <div class="stat-card total-card">
+                        <div class="stat-icon"><span class="material-icons-round">groups</span></div>
+                        <div class="stat-info">
+                            <h3>Utilisateurs Totals</h3>
+                            <p class="stat-value" id="stat-total">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart Section -->
+                <div class="card" style="padding: 20px; margin-bottom: 30px;">
+                    <h3>Répartition des Utilisateurs</h3>
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="usersChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Create User Section -->
+            <section id="section-create-user" class="content-section">
+                <form id="create-user-form" class="form-card">
+                    <!-- Role Selection -->
+                    <div class="form-section">
+                        <h3><span class="material-icons-round">badge</span> Sélection du rôle</h3>
+                        <div class="role-grid">
+                            <label class="role-card" data-role="medecin">
+                                <input type="radio" name="role" value="medecin" required>
+                                <div class="role-icon medecin-bg">
+                                    <span class="material-icons-round">medical_services</span>
+                                </div>
+                                <span class="role-name">Médecin</span>
+                            </label>
+                            <label class="role-card" data-role="centre_analyse">
+                                <input type="radio" name="role" value="centre_analyse">
+                                <div class="role-icon analyse-bg">
+                                    <span class="material-icons-round">science</span>
+                                </div>
+                                <span class="role-name">Centre d'Analyse</span>
+                            </label>
+                            <label class="role-card" data-role="pharmacie">
+                                <input type="radio" name="role" value="pharmacie">
+                                <div class="role-icon pharmacie-bg">
+                                    <span class="material-icons-round">local_pharmacy</span>
+                                </div>
+                                <span class="role-name">Pharmacie</span>
+                            </label>
+                            <label class="role-card" data-role="clinique">
+                                <input type="radio" name="role" value="clinique">
+                                <div class="role-icon clinique-bg">
+                                    <span class="material-icons-round">apartment</span>
+                                </div>
+                                <span class="role-name">Clinique</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Email Field -->
+                    <div class="form-section">
+                        <h3><span class="material-icons-round">email</span> Destinataire</h3>
+                        <div class="form-row">
+                            <div class="form-group" style="width: 100%;">
+                                <label for="email">Adresse Email *</label>
+                                <input type="email" id="email" name="email" placeholder="exemple@email.com" required
+                                    style="width: 100%;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit -->
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary" id="submit-btn">
+                            <span class="material-icons-round">send</span>
+                            Envoyer l'invitation
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Result Card -->
+                <div id="result-card" class="result-card" style="display:none">
+                    <div class="result-header">
+                        <span class="material-icons-round result-icon">check_circle</span>
+                        <h3>Invitation envoyée avec succès !</h3>
+                    </div>
+                    <div class="result-body">
+                        <div class="credential-row">
+                            <span class="credential-label">Email invité :</span>
+                            <span class="credential-value" id="result-email"></span>
+                        </div>
+                        <div class="credential-row">
+                            <span class="credential-label">Rôle :</span>
+                            <span class="credential-value" id="result-role"></span>
+                        </div>
+                        <p class="result-info">📧 L'utilisateur a reçu un lien pour compléter son inscription.</p>
+                    </div>
+                    <button class="btn-secondary" onclick="resetForm()">
+                        <span class="material-icons-round">person_add</span>
+                        Inviter un autre utilisateur
+                    </button>
+                </div>
+
+                <!-- Error Card -->
+                <div id="error-card" class="error-card" style="display:none">
+                    <div class="error-header">
+                        <span class="material-icons-round error-icon">error</span>
+                        <h3>Erreur</h3>
+                    </div>
+                    <p id="error-message"></p>
+                </div>
+            </section>
+
+
+            <!-- Users List Section -->
+            <section id="section-users-list" class="content-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><span class="material-icons-round">people</span> Liste des utilisateurs</h3>
+                        <button class="btn-icon" id="refresh-users-btn" title="Actualiser">
+                            <span class="material-icons-round">refresh</span>
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table class="users-table">
+                            <thead>
+                                <tr>
+                                    <th>Utilisateur</th>
+                                    <th>Rôle</th>
+                                    <th>Téléphone</th>
+                                    <th>Statut</th>
+                                    <th>Date d'inscription</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                <!-- Users will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="users-loading" class="loading-state" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>Chargement des utilisateurs...</p>
+                    </div>
+                    <div id="users-empty" class="empty-state" style="display: none;">
+                        <span class="material-icons-round">person_off</span>
+                        <h3>Aucun utilisateur trouvé</h3>
+                        <p>Commencez par envoyer une invitation.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

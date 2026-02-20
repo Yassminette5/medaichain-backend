@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -12,7 +12,7 @@ import { ProfilesModule } from '../profiles/profiles.module';
 @Module({
     imports: [
         UsersModule,
-        ProfilesModule,
+        forwardRef(() => ProfilesModule),
         PassportModule,
         JwtModule.registerAsync({
             imports: [ConfigModule],

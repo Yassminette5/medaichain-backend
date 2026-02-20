@@ -22,20 +22,25 @@ export class ProfilesService {
 
     // ========== OBTENIR PROFIL ==========
     async getProfile(userId: string, role: UserRole): Promise<any> {
+        const roleLower = role.toString().toLowerCase();
+        console.log(`[ProfilesService] Fetching profile for userId: ${userId}, role: ${roleLower}`);
         const objectId = new Types.ObjectId(userId);
 
-        switch (role) {
-            case UserRole.MEDECIN:
+        switch (roleLower) {
+            case UserRole.MEDECIN.toString():
                 return this.doctorModel.findOne({ userId: objectId }).exec();
-            case UserRole.PATIENT:
-                return this.patientModel.findOne({ userId: objectId }).exec();
-            case UserRole.PHARMACIE:
+            case UserRole.PATIENT.toString():
+                const patientProfile = await this.patientModel.findOne({ userId: objectId }).exec();
+                console.log(`[ProfilesService] Patient profile found: ${!!patientProfile}`);
+                return patientProfile;
+            case UserRole.PHARMACIE.toString():
                 return this.pharmacyModel.findOne({ userId: objectId }).exec();
-            case UserRole.CENTRE_ANALYSE:
+            case UserRole.CENTRE_ANALYSE.toString():
                 return this.labModel.findOne({ userId: objectId }).exec();
-            case UserRole.CLINIQUE:
+            case UserRole.CLINIQUE.toString():
                 return this.clinicModel.findOne({ userId: objectId }).exec();
             default:
+                console.warn(`[ProfilesService] Role match failed for: ${roleLower}`);
                 throw new BadRequestException('Rôle invalide');
         }
     }

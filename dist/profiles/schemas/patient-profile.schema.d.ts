@@ -1,38 +1,15 @@
 import { Document, Types } from 'mongoose';
 export type PatientProfileDocument = PatientProfile & Document;
-export declare enum BloodType {
-    A_POSITIVE = "A+",
-    A_NEGATIVE = "A-",
-    B_POSITIVE = "B+",
-    B_NEGATIVE = "B-",
-    AB_POSITIVE = "AB+",
-    AB_NEGATIVE = "AB-",
-    O_POSITIVE = "O+",
-    O_NEGATIVE = "O-"
-}
 export declare enum Gender {
     MALE = "male",
     FEMALE = "female"
 }
 export declare class PatientProfile {
     userId: Types.ObjectId;
-    firstName: string;
-    lastName: string;
-    dateOfBirth: Date;
+    fullName: string;
+    age: number;
     gender: Gender;
-    nationalId: string;
-    address: string;
-    city: string;
-    wilaya: string;
-    bloodType: BloodType;
     allergies: string[];
-    chronicDiseases: string[];
-    emergencyContactName: string;
-    emergencyContactPhone: string;
-    emergencyContactRelation: string;
-    insuranceProvider: string;
-    insuranceNumber: string;
-    profilePhoto: string;
     height: number;
     weight: number;
 }

@@ -33,12 +33,15 @@ let ProfilesService = class ProfilesService {
         this.usersService = usersService;
     }
     async getProfile(userId, role) {
+        console.log(`[ProfilesService] Fetching profile for userId: ${userId}, role: ${role}`);
         const objectId = new mongoose_2.Types.ObjectId(userId);
         switch (role) {
             case user_schema_1.UserRole.MEDECIN:
                 return this.doctorModel.findOne({ userId: objectId }).exec();
             case user_schema_1.UserRole.PATIENT:
-                return this.patientModel.findOne({ userId: objectId }).exec();
+                const patientProfile = await this.patientModel.findOne({ userId: objectId }).exec();
+                console.log(`[ProfilesService] Patient profile found: ${!!patientProfile}`);
+                return patientProfile;
             case user_schema_1.UserRole.PHARMACIE:
                 return this.pharmacyModel.findOne({ userId: objectId }).exec();
             case user_schema_1.UserRole.CENTRE_ANALYSE:

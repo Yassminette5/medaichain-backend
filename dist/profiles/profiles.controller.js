@@ -20,18 +20,22 @@ const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/decorators/roles.decorator");
 const user_schema_1 = require("../users/schemas/user.schema");
+const auth_service_1 = require("../auth/auth.service");
 let ProfilesController = class ProfilesController {
-    constructor(profilesService) {
+    constructor(profilesService, authService) {
         this.profilesService = profilesService;
+        this.authService = authService;
     }
     async getMyProfile(req) {
         return this.profilesService.getProfile(req.user.sub, req.user.role);
     }
     async updateDoctorProfile(req, data) {
-        return this.profilesService.upsertDoctorProfile(req.user.sub, data);
+        await this.profilesService.upsertDoctorProfile(req.user.sub, data);
+        return this.authService.getProfile(req.user.sub);
     }
     async updatePatientProfile(req, data) {
-        return this.profilesService.upsertPatientProfile(req.user.sub, data);
+        await this.profilesService.upsertPatientProfile(req.user.sub, data);
+        return this.authService.getProfile(req.user.sub);
     }
     async updatePharmacyProfile(req, data) {
         return this.profilesService.upsertPharmacyProfile(req.user.sub, data);
@@ -165,6 +169,8 @@ __decorate([
 exports.ProfilesController = ProfilesController = __decorate([
     (0, swagger_1.ApiTags)('Profils'),
     (0, common_1.Controller)('profiles'),
-    __metadata("design:paramtypes", [profiles_service_1.ProfilesService])
+    __param(1, (0, common_1.Inject)((0, common_1.forwardRef)(() => auth_service_1.AuthService))),
+    __metadata("design:paramtypes", [profiles_service_1.ProfilesService,
+        auth_service_1.AuthService])
 ], ProfilesController);
 //# sourceMappingURL=profiles.controller.js.map

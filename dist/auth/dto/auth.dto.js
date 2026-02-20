@@ -39,17 +39,11 @@ __decorate([
     __metadata("design:type", String)
 ], RegisterDto.prototype, "role", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: 'Jean', required: false }),
+    (0, swagger_1.ApiProperty)({ example: 'Jean Dupont', required: false }),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
-], RegisterDto.prototype, "firstName", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ example: 'Dupont', required: false }),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
-], RegisterDto.prototype, "lastName", void 0);
+], RegisterDto.prototype, "fullName", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'Cardiologie', required: false }),
     (0, class_validator_1.IsString)(),

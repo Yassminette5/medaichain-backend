@@ -1,6 +1,7 @@
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
+import { UserDocument } from '../users/schemas/user.schema';
 import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto } from './dto/auth.dto';
 import { MailService } from './mail.service';
 import { ProfilesService } from '../profiles/profiles.service';
@@ -38,5 +39,6 @@ export declare class AuthService {
         message: string;
     }>;
     private generateTokens;
+    findUserById(userId: string): Promise<UserDocument>;
     private sanitizeUser;
 }

@@ -30,15 +30,10 @@ export class RegisterDto {
     role: UserRole;
 
     // Champs optionnels pour Médecin / Patient
-    @ApiProperty({ example: 'Jean', required: false })
+    @ApiProperty({ example: 'Jean Dupont', required: false })
     @IsString()
     @IsOptional()
-    firstName?: string;
-
-    @ApiProperty({ example: 'Dupont', required: false })
-    @IsString()
-    @IsOptional()
-    lastName?: string;
+    fullName?: string;
 
     @ApiProperty({ example: 'Cardiologie', required: false })
     @IsString()

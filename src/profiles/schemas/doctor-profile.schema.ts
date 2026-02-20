@@ -9,12 +9,9 @@ export class DoctorProfile {
     userId: Types.ObjectId;
 
     @Prop({ required: true })
-    firstName: string;
+    fullName: string;
 
-    @Prop({ required: true })
-    lastName: string;
-
-    @Prop({ required: true })
+    @Prop()
     speciality: string; // Cardiologie, Pédiatrie, etc.
 
     @Prop()

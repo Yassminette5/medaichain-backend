@@ -8,6 +8,8 @@ import {
     Query,
     UseGuards,
     Request,
+    Inject,
+    forwardRef,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { ProfilesService } from './profiles.service';
@@ -15,11 +17,16 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../users/schemas/user.schema';
+import { AuthService } from '../auth/auth.service';
 
 @ApiTags('Profils')
 @Controller('profiles')
 export class ProfilesController {
-    constructor(private readonly profilesService: ProfilesService) { }
+    constructor(
+        private readonly profilesService: ProfilesService,
+        @Inject(forwardRef(() => AuthService))
+        private readonly authService: AuthService,
+    ) { }
 
     // ========== MON PROFIL ==========
     @UseGuards(JwtAuthGuard)
@@ -37,7 +44,8 @@ export class ProfilesController {
     @Put('doctor')
     @ApiOperation({ summary: 'Créer/Mettre à jour mon profil médecin' })
     async updateDoctorProfile(@Request() req, @Body() data: any) {
-        return this.profilesService.upsertDoctorProfile(req.user.sub, data);
+        await this.profilesService.upsertDoctorProfile(req.user.sub, data);
+        return this.authService.getProfile(req.user.sub);
     }
 
     // ========== PROFIL PATIENT ==========
@@ -47,7 +55,8 @@ export class ProfilesController {
     @Put('patient')
     @ApiOperation({ summary: 'Créer/Mettre à jour mon profil patient' })
     async updatePatientProfile(@Request() req, @Body() data: any) {
-        return this.profilesService.upsertPatientProfile(req.user.sub, data);
+        await this.profilesService.upsertPatientProfile(req.user.sub, data);
+        return this.authService.getProfile(req.user.sub);
     }
 
     // ========== PROFIL PHARMACIE ==========

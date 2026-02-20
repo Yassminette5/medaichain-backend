@@ -3,6 +3,8 @@ import {
     UnauthorizedException,
     ConflictException,
     BadRequestException,
+    Inject,
+    forwardRef,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -27,6 +29,7 @@ export class AuthService {
         private jwtService: JwtService,
         private configService: ConfigService,
         private mailService: MailService,
+        @Inject(forwardRef(() => ProfilesService))
         private profilesService: ProfilesService,
     ) { }
 
@@ -60,8 +63,7 @@ export class AuthService {
         try {
             if (registerDto.role === UserRole.MEDECIN) {
                 await this.profilesService.upsertDoctorProfile(user._id.toString(), {
-                    firstName: registerDto.firstName || '',
-                    lastName: registerDto.lastName || '',
+                    fullName: registerDto.fullName || '',
                     speciality: registerDto.speciality || '',
                     wilaya: registerDto.wilaya,
                     city: registerDto.wilaya, // Mapper wilaya vers city pour l'instant
@@ -85,13 +87,16 @@ export class AuthService {
                 });
             } else if (registerDto.role === UserRole.PATIENT) {
                 await this.profilesService.upsertPatientProfile(user._id.toString(), {
-                    firstName: registerDto.firstName || '',
-                    lastName: registerDto.lastName || '',
+                    fullName: registerDto.fullName || 'Utilisateur',
+                    age: 0, // Default for required field if still strict
+                    gender: null,
+                    allergies: [],
                 });
             }
         } catch (error) {
-            // En cas d'erreur de création de profil, on pourrait supprimer l'user ou juste loguer
-            console.error('Erreur lors de la création du profil', error);
+            console.error(`Erreur lors de la création du profil pour le rôle ${registerDto.role}:`, error);
+            // Optionally: throw error if profile is critical
+            // throw new BadRequestException('La création du profil a échoué');
         }
 
         // Générer les tokens
@@ -99,7 +104,7 @@ export class AuthService {
 
         return {
             message: 'Inscription réussie',
-            user: this.sanitizeUser(user),
+            user: await this.sanitizeUser(user),
             ...tokens,
         };
     }
@@ -129,7 +134,7 @@ export class AuthService {
 
         return {
             message: 'Connexion réussie',
-            user: this.sanitizeUser(user),
+            user: await this.sanitizeUser(user),
             ...tokens,
         };
     }
@@ -201,7 +206,7 @@ export class AuthService {
     // ========== PROFIL UTILISATEUR ==========
     async getProfile(userId: string) {
         const user = await this.usersService.findById(userId);
-        return this.sanitizeUser(user);
+        return await this.sanitizeUser(user);
     }
 
     // ========== COMPLÉTER LE PROFIL ==========
@@ -235,12 +240,60 @@ export class AuthService {
         };
     }
 
-    private sanitizeUser(user: UserDocument) {
+    // ========== FIND USER BY ID ==========
+    async findUserById(userId: string) {
+        return this.usersService.findById(userId);
+    }
+
+    private async sanitizeUser(user: UserDocument) {
         const userObj = user.toObject();
         const { password, resetPasswordToken, resetPasswordExpires, ...result } = userObj;
-        return {
+        console.log(`[AuthService] Sanitizing user: ${result.email}, role: ${result.role} (type: ${typeof result.role})`);
+
+        const mergedUser = {
             ...result,
             id: result._id.toString(),
+            fullName: null,
+            gender: null,
+            age: null,
+            height: null,
+            weight: null,
+            allergies: null,
+            speciality: null,
+            hospital: null,
+            licenseNumber: null,
         };
+
+        try {
+            const profile = await this.profilesService.getProfile(user._id.toString(), user.role);
+            if (profile) {
+                console.log(`[AuthService] Profile found for user ${user.email}, merging...`);
+                const pData = profile.toObject ? profile.toObject() : profile;
+
+                // Explicitly merge known profile fields based on role
+                const roleLower = user.role.toString().toLowerCase();
+                if (roleLower === UserRole.PATIENT.toString()) {
+                    console.log(`[AuthService] Merging Patient data: ${pData.fullName}`);
+                    mergedUser.fullName = pData.fullName || mergedUser.fullName;
+                    mergedUser.gender = pData.gender;
+                    mergedUser.age = pData.age;
+                    mergedUser.height = pData.height;
+                    mergedUser.weight = pData.weight;
+                    mergedUser.allergies = pData.allergies;
+                } else if (roleLower === UserRole.MEDECIN.toString()) {
+                    mergedUser.fullName = pData.fullName || mergedUser.fullName;
+                    mergedUser.speciality = pData.speciality;
+                    mergedUser.hospital = pData.hospital;
+                    mergedUser.licenseNumber = pData.licenseNumber;
+                }
+                // Add other roles as needed
+            } else {
+                console.warn(`[AuthService] No profile found for user ${user.email} with role ${user.role}`);
+            }
+        } catch (e) {
+            console.error('Erreur lors du merge du profil:', e);
+        }
+
+        return mergedUser;
     }
 }

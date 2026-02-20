@@ -2,8 +2,7 @@ import { Document, Types } from 'mongoose';
 export type DoctorProfileDocument = DoctorProfile & Document;
 export declare class DoctorProfile {
     userId: Types.ObjectId;
-    firstName: string;
-    lastName: string;
+    fullName: string;
     speciality: string;
     subSpeciality: string;
     licenseNumber: string;

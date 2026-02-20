@@ -17,6 +17,7 @@ const pharmacy_profile_schema_1 = require("./schemas/pharmacy-profile.schema");
 const lab_profile_schema_1 = require("./schemas/lab-profile.schema");
 const clinic_profile_schema_1 = require("./schemas/clinic-profile.schema");
 const users_module_1 = require("../users/users.module");
+const auth_module_1 = require("../auth/auth.module");
 let ProfilesModule = class ProfilesModule {
 };
 exports.ProfilesModule = ProfilesModule;
@@ -31,6 +32,7 @@ exports.ProfilesModule = ProfilesModule = __decorate([
                 { name: clinic_profile_schema_1.ClinicProfile.name, schema: clinic_profile_schema_1.ClinicProfileSchema },
             ]),
             users_module_1.UsersModule,
+            (0, common_1.forwardRef)(() => auth_module_1.AuthModule),
         ],
         controllers: [profiles_controller_1.ProfilesController],
         providers: [profiles_service_1.ProfilesService],

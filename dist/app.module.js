@@ -13,6 +13,7 @@ const mongoose_1 = require("@nestjs/mongoose");
 const auth_module_1 = require("./auth/auth.module");
 const users_module_1 = require("./users/users.module");
 const profiles_module_1 = require("./profiles/profiles.module");
+const patient_module_1 = require("./patient/patient.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -33,6 +34,7 @@ exports.AppModule = AppModule = __decorate([
             auth_module_1.AuthModule,
             users_module_1.UsersModule,
             profiles_module_1.ProfilesModule,
+            patient_module_1.PatientModule,
         ],
     })
 ], AppModule);

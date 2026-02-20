@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ProfilesService } from './profiles.service';
 import { ProfilesController } from './profiles.controller';
@@ -8,6 +8,7 @@ import { PharmacyProfile, PharmacyProfileSchema } from './schemas/pharmacy-profi
 import { LabProfile, LabProfileSchema } from './schemas/lab-profile.schema';
 import { ClinicProfile, ClinicProfileSchema } from './schemas/clinic-profile.schema';
 import { UsersModule } from '../users/users.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
     imports: [
@@ -19,6 +20,7 @@ import { UsersModule } from '../users/users.module';
             { name: ClinicProfile.name, schema: ClinicProfileSchema },
         ]),
         UsersModule,
+        forwardRef(() => AuthModule),
     ],
     controllers: [ProfilesController],
     providers: [ProfilesService],

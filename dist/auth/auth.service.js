@@ -8,6 +8,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
@@ -46,8 +49,7 @@ let AuthService = class AuthService {
         try {
             if (registerDto.role === user_schema_1.UserRole.MEDECIN) {
                 await this.profilesService.upsertDoctorProfile(user._id.toString(), {
-                    firstName: registerDto.firstName || '',
-                    lastName: registerDto.lastName || '',
+                    fullName: registerDto.fullName || '',
                     speciality: registerDto.speciality || '',
                     wilaya: registerDto.wilaya,
                     city: registerDto.wilaya,
@@ -74,18 +76,20 @@ let AuthService = class AuthService {
             }
             else if (registerDto.role === user_schema_1.UserRole.PATIENT) {
                 await this.profilesService.upsertPatientProfile(user._id.toString(), {
-                    firstName: registerDto.firstName || '',
-                    lastName: registerDto.lastName || '',
+                    fullName: registerDto.fullName || 'Utilisateur',
+                    age: 0,
+                    gender: null,
+                    allergies: [],
                 });
             }
         }
         catch (error) {
-            console.error('Erreur lors de la création du profil', error);
+            console.error(`Erreur lors de la création du profil pour le rôle ${registerDto.role}:`, error);
         }
         const tokens = await this.generateTokens(user);
         return {
             message: 'Inscription réussie',
-            user: this.sanitizeUser(user),
+            user: await this.sanitizeUser(user),
             ...tokens,
         };
     }
@@ -105,7 +109,7 @@ let AuthService = class AuthService {
         const tokens = await this.generateTokens(user);
         return {
             message: 'Connexion réussie',
-            user: this.sanitizeUser(user),
+            user: await this.sanitizeUser(user),
             ...tokens,
         };
     }
@@ -154,7 +158,7 @@ let AuthService = class AuthService {
     }
     async getProfile(userId) {
         const user = await this.usersService.findById(userId);
-        return this.sanitizeUser(user);
+        return await this.sanitizeUser(user);
     }
     async completeProfile(userId) {
         await this.usersService.markProfileCompleted(userId);
@@ -181,18 +185,61 @@ let AuthService = class AuthService {
             refreshToken,
         };
     }
-    sanitizeUser(user) {
+    async findUserById(userId) {
+        return this.usersService.findById(userId);
+    }
+    async sanitizeUser(user) {
         const userObj = user.toObject();
         const { password, resetPasswordToken, resetPasswordExpires, ...result } = userObj;
-        return {
+        console.log(`[AuthService] Sanitizing user: ${result.email}, role: ${result.role} (type: ${typeof result.role})`);
+        const mergedUser = {
             ...result,
             id: result._id.toString(),
+            fullName: null,
+            gender: null,
+            age: null,
+            height: null,
+            weight: null,
+            allergies: null,
+            speciality: null,
+            hospital: null,
+            licenseNumber: null,
         };
+        try {
+            const profile = await this.profilesService.getProfile(user._id.toString(), user.role);
+            if (profile) {
+                console.log(`[AuthService] Profile found for user ${user.email}, merging...`);
+                const pData = profile.toObject ? profile.toObject() : profile;
+                if (user.role === user_schema_1.UserRole.PATIENT) {
+                    console.log(`[AuthService] Merging Patient data: ${pData.fullName}`);
+                    mergedUser.fullName = pData.fullName || mergedUser.fullName;
+                    mergedUser.gender = pData.gender;
+                    mergedUser.age = pData.age;
+                    mergedUser.height = pData.height;
+                    mergedUser.weight = pData.weight;
+                    mergedUser.allergies = pData.allergies;
+                }
+                else if (user.role === user_schema_1.UserRole.MEDECIN) {
+                    mergedUser.fullName = pData.fullName || mergedUser.fullName;
+                    mergedUser.speciality = pData.speciality;
+                    mergedUser.hospital = pData.hospital;
+                    mergedUser.licenseNumber = pData.licenseNumber;
+                }
+            }
+            else {
+                console.warn(`[AuthService] No profile found for user ${user.email} with role ${user.role}`);
+            }
+        }
+        catch (e) {
+            console.error('Erreur lors du merge du profil:', e);
+        }
+        return mergedUser;
     }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
+    __param(4, (0, common_1.Inject)((0, common_1.forwardRef)(() => profiles_service_1.ProfilesService))),
     __metadata("design:paramtypes", [users_service_1.UsersService,
         jwt_1.JwtService,
         config_1.ConfigService,

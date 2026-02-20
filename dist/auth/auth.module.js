@@ -24,7 +24,7 @@ exports.AuthModule = AuthModule = __decorate([
     (0, common_1.Module)({
         imports: [
             users_module_1.UsersModule,
-            profiles_module_1.ProfilesModule,
+            (0, common_1.forwardRef)(() => profiles_module_1.ProfilesModule),
             passport_1.PassportModule,
             jwt_1.JwtModule.registerAsync({
                 imports: [config_1.ConfigModule],

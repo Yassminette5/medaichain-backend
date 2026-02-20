@@ -22,13 +22,9 @@ __decorate([
 __decorate([
     (0, mongoose_1.Prop)({ required: true }),
     __metadata("design:type", String)
-], DoctorProfile.prototype, "firstName", void 0);
+], DoctorProfile.prototype, "fullName", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ required: true }),
-    __metadata("design:type", String)
-], DoctorProfile.prototype, "lastName", void 0);
-__decorate([
-    (0, mongoose_1.Prop)({ required: true }),
+    (0, mongoose_1.Prop)(),
     __metadata("design:type", String)
 ], DoctorProfile.prototype, "speciality", void 0);
 __decorate([

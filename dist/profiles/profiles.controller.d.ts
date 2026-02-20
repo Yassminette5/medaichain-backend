@@ -1,10 +1,12 @@
 import { ProfilesService } from './profiles.service';
+import { AuthService } from '../auth/auth.service';
 export declare class ProfilesController {
     private readonly profilesService;
-    constructor(profilesService: ProfilesService);
+    private readonly authService;
+    constructor(profilesService: ProfilesService, authService: AuthService);
     getMyProfile(req: any): Promise<any>;
-    updateDoctorProfile(req: any, data: any): Promise<import("./schemas/doctor-profile.schema").DoctorProfileDocument>;
-    updatePatientProfile(req: any, data: any): Promise<import("./schemas/patient-profile.schema").PatientProfileDocument>;
+    updateDoctorProfile(req: any, data: any): Promise<any>;
+    updatePatientProfile(req: any, data: any): Promise<any>;
     updatePharmacyProfile(req: any, data: any): Promise<import("./schemas/pharmacy-profile.schema").PharmacyProfileDocument>;
     updateLabProfile(req: any, data: any): Promise<import("./schemas/lab-profile.schema").LabProfileDocument>;
     updateClinicProfile(req: any, data: any): Promise<import("./schemas/clinic-profile.schema").ClinicProfileDocument>;

@@ -1,32 +1,39 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS for Flutter web
+  // Enable CORS for Flutter web and app
   app.enableCors({
     origin: true,
     credentials: true,
   });
 
-  // Validation pipe
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  // Global validation pipe
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
 
-  // Swagger
+  // Swagger API documentation
   const config = new DocumentBuilder()
     .setTitle('MEDAIChain API')
-    .setDescription('API pour la gestion de cliniques médicales')
+    .setDescription('API pour la gestion de cliniques médicales et application patient')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  await app.listen(process.env.PORT ?? 3000);
-  console.log(`🚀 Application running on: http://localhost:${process.env.PORT ?? 3000}`);
-  console.log(`📄 Swagger UI: http://localhost:${process.env.PORT ?? 3000}/api`);
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
+  console.log(`🚀 MEDAIChain API running on http://localhost:${port}`);
+  console.log(`📚 Swagger docs: http://localhost:${port}/api`);
 }
 bootstrap();

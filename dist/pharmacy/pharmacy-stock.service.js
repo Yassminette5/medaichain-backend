@@ -80,10 +80,17 @@ let PharmacyStockService = class PharmacyStockService {
         };
     }
     async getAllPharmacies() {
-        const pharmacies = await this.medicationStockModel
+        const pharmacyIds = await this.medicationStockModel
             .distinct('pharmacyId')
             .exec();
-        return pharmacies.map(id => ({ pharmacyId: id }));
+        return pharmacyIds.map((id, index) => ({
+            pharmacyId: id,
+            name: `Pharmacie ${index + 1}`,
+            address: `${index + 1} Rue de la Pharmacie, Alger`,
+            latitude: 36.7538 + (Math.random() - 0.5) * 0.1,
+            longitude: 3.0588 + (Math.random() - 0.5) * 0.1,
+            offersDelivery: index % 2 === 0,
+        }));
     }
     async getAvailableMedications(pharmacyId) {
         const medications = await this.medicationStockModel

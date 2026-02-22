@@ -1,4 +1,7 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import { PharmacyStockService } from './pharmacy-stock.service';
 import { PharmacyStatisticsService } from './pharmacy-statistics.service';
 import { MedicationRequestService } from './medication-request.service';
@@ -13,6 +16,46 @@ export class PharmacyController {
     private readonly statisticsService: PharmacyStatisticsService,
     private readonly requestService: MedicationRequestService,
   ) {}
+
+  // ============ FILE UPLOAD ============
+  @Post('upload/prescription')
+  @UseInterceptors(
+    FileInterceptor('prescription', {
+      storage: diskStorage({
+        destination: './uploads/prescriptions',
+        filename: (req, file, callback) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          const filename = `prescription-${uniqueSuffix}${ext}`;
+          callback(null, filename);
+        },
+      }),
+      fileFilter: (req, file, callback) => {
+        if (!file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
+          return callback(new BadRequestException('Seules les images sont autorisées'), false);
+        }
+        callback(null, true);
+      },
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB max
+      },
+    }),
+  )
+  async uploadPrescription(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('Aucun fichier fourni');
+    }
+
+    // Return the URL to access the uploaded file
+    const fileUrl = `${process.env.API_URL || 'http://localhost:3000'}/uploads/prescriptions/${file.filename}`;
+    
+    return {
+      success: true,
+      url: fileUrl,
+      filename: file.filename,
+      size: file.size,
+    };
+  }
 
   // ============ DASHBOARD ============
   @Get(':pharmacyId/dashboard')

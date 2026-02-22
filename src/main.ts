@@ -2,14 +2,21 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
     // Enable CORS for Flutter app
     app.enableCors({
         origin: true,
         credentials: true,
+    });
+
+    // Serve static files (uploaded images)
+    app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+        prefix: '/uploads/',
     });
 
     // Global validation pipe
@@ -35,5 +42,6 @@ async function bootstrap() {
     await app.listen(port);
     console.log(`🚀 MEDAIChain API running on http://localhost:${port}`);
     console.log(`📚 Swagger docs: http://localhost:${port}/api`);
+    console.log(`📁 Uploads folder: ${join(__dirname, '..', 'uploads')}`);
 }
 bootstrap();

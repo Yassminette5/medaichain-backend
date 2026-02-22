@@ -25,6 +25,11 @@ export declare class PharmacyStockService {
     private getDefaultSettings;
     getAllPharmacies(): Promise<{
         pharmacyId: string;
+        name: string;
+        address: string;
+        latitude: number;
+        longitude: number;
+        offersDelivery: boolean;
     }[]>;
     getAvailableMedications(pharmacyId: string): Promise<{
         id: string;

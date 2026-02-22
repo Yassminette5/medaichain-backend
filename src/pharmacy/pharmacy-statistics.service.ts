@@ -12,7 +12,10 @@ export class PharmacyStatisticsService {
     
     // Calculate sales overview
     const completedRequests = requests.filter(r => r.status === RequestStatus.TERMINE);
-    const totalSales = completedRequests.reduce((sum, r) => sum + (r.medication.quantity * 100), 0); // Mock price
+    const totalSales = completedRequests.reduce((sum, r) => {
+      const requestTotal = r.medications.reduce((medSum, med) => medSum + (med.quantity * 100), 0);
+      return sum + requestTotal;
+    }, 0); // Mock price
     const totalDeliveries = completedRequests.length;
     
     // Calculate percentage change (only if there's data)
@@ -82,21 +85,23 @@ export class PharmacyStatisticsService {
     const categories = new Map<string, number>();
     
     requests.forEach(r => {
-      const medName = r.medication.name.toLowerCase();
-      let category = 'Autres';
-      
-      if (medName.includes('amox') || medName.includes('antibiotic')) {
-        category = 'Antibiotiques';
-      } else if (medName.includes('paracet') || medName.includes('ibu')) {
-        category = 'Antalgiques';
-      } else if (medName.includes('vitam')) {
-        category = 'Vitamines';
-      }
-      
-      categories.set(category, (categories.get(category) || 0) + 1);
+      r.medications.forEach(med => {
+        const medName = med.name.toLowerCase();
+        let category = 'Autres';
+        
+        if (medName.includes('amox') || medName.includes('antibiotic')) {
+          category = 'Antibiotiques';
+        } else if (medName.includes('paracet') || medName.includes('ibu')) {
+          category = 'Antalgiques';
+        } else if (medName.includes('vitam')) {
+          category = 'Vitamines';
+        }
+        
+        categories.set(category, (categories.get(category) || 0) + 1);
+      });
     });
 
-    const total = requests.length;
+    const total = requests.reduce((sum, r) => sum + r.medications.length, 0);
     const colors = {
       'Antibiotiques': '#4FACFE',
       'Antalgiques': '#10B981',
@@ -119,24 +124,26 @@ export class PharmacyStatisticsService {
     const medicationCounts = new Map<string, { count: number; medication: any }>();
     
     requests.forEach(r => {
-      const key = `${r.medication.name}-${r.medication.dosage}`;
-      const existing = medicationCounts.get(key);
-      
-      if (existing) {
-        existing.count += r.medication.quantity;
-      } else {
-        medicationCounts.set(key, {
-          count: r.medication.quantity,
-          medication: r.medication,
-        });
-      }
+      r.medications.forEach(med => {
+        const key = `${med.name}-${med.dosage}`;
+        const existing = medicationCounts.get(key);
+        
+        if (existing) {
+          existing.count += med.quantity;
+        } else {
+          medicationCounts.set(key, {
+            count: med.quantity,
+            medication: med,
+          });
+        }
+      });
     });
 
     const sorted = Array.from(medicationCounts.entries())
       .sort((a, b) => b[1].count - a[1].count)
       .slice(0, 5);
 
-    return sorted.map(([key, data], index) => ({
+    return sorted.map(([, data]) => ({
       id: data.medication.id,
       name: data.medication.name,
       dosage: data.medication.dosage,

@@ -37,23 +37,26 @@ export class MedicationRequestService {
       id: createDto.patientId,
       name: createDto.patientName,
       phoneNumber: createDto.patientPhone,
+      location: createDto.patientLocation,
     };
 
-    const medication: RequestedMedication = {
-      id: Date.now().toString(),
-      name: createDto.medicationName,
-      dosage: createDto.medicationDosage,
-      quantity: createDto.quantity,
-      unit: createDto.unit || 'unités',
-    };
+    const medications: RequestedMedication[] = createDto.medications.map((med, index) => ({
+      id: `${Date.now()}-${index}`,
+      name: med.medicationName,
+      dosage: med.medicationDosage,
+      quantity: med.quantity,
+      unit: med.unit || 'unités',
+    }));
 
     const newRequest = await this.medicationRequestModel.create({
       pharmacyId,
       patient,
-      medication,
+      medications,
       status: createDto.isUrgent ? RequestStatus.URGENT : RequestStatus.EN_ATTENTE,
       requestDate: new Date(),
       isUrgent: createDto.isUrgent || false,
+      requestsDelivery: createDto.requestsDelivery || false,
+      prescriptionImageUrl: createDto.prescriptionImageUrl,
     });
 
     return newRequest;
@@ -93,7 +96,8 @@ export class MedicationRequestService {
         id: pharmacyId,
         name: 'Pharmacie Centrale',
         totalOrders: requests.length,
-        totalPackages: requests.reduce((sum, r) => sum + r.medication.quantity, 0),
+        totalPackages: requests.reduce((sum, r) => sum + r.medications.reduce((medSum, med) => medSum + med.quantity, 0), 0),
+        offersDelivery: true, // In production, fetch from pharmacy profile
       },
       medicationRequests: requests,
     };

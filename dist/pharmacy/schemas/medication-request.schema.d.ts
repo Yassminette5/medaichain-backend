@@ -11,6 +11,11 @@ export declare class Patient {
     id: string;
     name: string;
     phoneNumber?: string;
+    location?: {
+        latitude: number;
+        longitude: number;
+        address?: string;
+    };
 }
 export declare class RequestedMedication {
     id: string;
@@ -24,10 +29,11 @@ export declare class RequestedMedication {
 export declare class MedicationRequest extends Document {
     pharmacyId: string;
     patient: Patient;
-    medication: RequestedMedication;
+    medications: RequestedMedication[];
     status: RequestStatus;
     requestDate: Date;
     isUrgent: boolean;
+    requestsDelivery: boolean;
     prescriptionImageUrl?: string;
     doctorName?: string;
     validationNote?: string;

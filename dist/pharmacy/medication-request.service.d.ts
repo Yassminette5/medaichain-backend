@@ -15,6 +15,7 @@ export declare class MedicationRequestService {
             name: string;
             totalOrders: number;
             totalPackages: number;
+            offersDelivery: boolean;
         };
         medicationRequests: (import("mongoose").Document<unknown, {}, MedicationRequest, {}, {}> & MedicationRequest & Required<{
             _id: import("mongoose").Types.ObjectId;

@@ -14,6 +14,9 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PharmacyController = void 0;
 const common_1 = require("@nestjs/common");
+const platform_express_1 = require("@nestjs/platform-express");
+const multer_1 = require("multer");
+const path_1 = require("path");
 const pharmacy_stock_service_1 = require("./pharmacy-stock.service");
 const pharmacy_statistics_service_1 = require("./pharmacy-statistics.service");
 const medication_request_service_1 = require("./medication-request.service");
@@ -25,6 +28,18 @@ let PharmacyController = class PharmacyController {
         this.stockService = stockService;
         this.statisticsService = statisticsService;
         this.requestService = requestService;
+    }
+    async uploadPrescription(file) {
+        if (!file) {
+            throw new common_1.BadRequestException('Aucun fichier fourni');
+        }
+        const fileUrl = `${process.env.API_URL || 'http://localhost:3000'}/uploads/prescriptions/${file.filename}`;
+        return {
+            success: true,
+            url: fileUrl,
+            filename: file.filename,
+            size: file.size,
+        };
     }
     async getDashboard(pharmacyId) {
         return this.requestService.getDashboard(pharmacyId);
@@ -80,6 +95,33 @@ let PharmacyController = class PharmacyController {
     }
 };
 exports.PharmacyController = PharmacyController;
+__decorate([
+    (0, common_1.Post)('upload/prescription'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('prescription', {
+        storage: (0, multer_1.diskStorage)({
+            destination: './uploads/prescriptions',
+            filename: (req, file, callback) => {
+                const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+                const ext = (0, path_1.extname)(file.originalname);
+                const filename = `prescription-${uniqueSuffix}${ext}`;
+                callback(null, filename);
+            },
+        }),
+        fileFilter: (req, file, callback) => {
+            if (!file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
+                return callback(new common_1.BadRequestException('Seules les images sont autorisées'), false);
+            }
+            callback(null, true);
+        },
+        limits: {
+            fileSize: 5 * 1024 * 1024,
+        },
+    })),
+    __param(0, (0, common_1.UploadedFile)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], PharmacyController.prototype, "uploadPrescription", null);
 __decorate([
     (0, common_1.Get)(':pharmacyId/dashboard'),
     __param(0, (0, common_1.Param)('pharmacyId')),

@@ -93,11 +93,20 @@ export class PharmacyStockService {
   }
 
   async getAllPharmacies() {
-    const pharmacies = await this.medicationStockModel
+    const pharmacyIds = await this.medicationStockModel
       .distinct('pharmacyId')
       .exec();
     
-    return pharmacies.map(id => ({ pharmacyId: id }));
+    // For now, return mock data with locations (Algiers area)
+    // In production, this should fetch from pharmacy profiles
+    return pharmacyIds.map((id, index) => ({
+      pharmacyId: id,
+      name: `Pharmacie ${index + 1}`,
+      address: `${index + 1} Rue de la Pharmacie, Alger`,
+      latitude: 36.7538 + (Math.random() - 0.5) * 0.1, // Random location around Algiers
+      longitude: 3.0588 + (Math.random() - 0.5) * 0.1,
+      offersDelivery: index % 2 === 0, // Alternate pharmacies offer delivery
+    }));
   }
 
   async getAvailableMedications(pharmacyId: string) {

@@ -36,6 +36,10 @@ __decorate([
     (0, mongoose_1.Prop)(),
     __metadata("design:type", String)
 ], Patient.prototype, "phoneNumber", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: Object }),
+    __metadata("design:type", Object)
+], Patient.prototype, "location", void 0);
 exports.Patient = Patient = __decorate([
     (0, mongoose_1.Schema)({ _id: false })
 ], Patient);
@@ -85,9 +89,9 @@ __decorate([
     __metadata("design:type", Patient)
 ], MedicationRequest.prototype, "patient", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ type: RequestedMedication, required: true }),
-    __metadata("design:type", RequestedMedication)
-], MedicationRequest.prototype, "medication", void 0);
+    (0, mongoose_1.Prop)({ type: [RequestedMedication], required: true }),
+    __metadata("design:type", Array)
+], MedicationRequest.prototype, "medications", void 0);
 __decorate([
     (0, mongoose_1.Prop)({ type: String, enum: RequestStatus, default: RequestStatus.EN_ATTENTE }),
     __metadata("design:type", String)
@@ -100,6 +104,10 @@ __decorate([
     (0, mongoose_1.Prop)({ default: false }),
     __metadata("design:type", Boolean)
 ], MedicationRequest.prototype, "isUrgent", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ default: false }),
+    __metadata("design:type", Boolean)
+], MedicationRequest.prototype, "requestsDelivery", void 0);
 __decorate([
     (0, mongoose_1.Prop)(),
     __metadata("design:type", String)

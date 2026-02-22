@@ -20,6 +20,13 @@ export class Patient {
 
   @Prop()
   phoneNumber?: string;
+
+  @Prop({ type: Object })
+  location?: {
+    latitude: number;
+    longitude: number;
+    address?: string;
+  };
 }
 
 @Schema({ _id: false })
@@ -54,8 +61,8 @@ export class MedicationRequest extends Document {
   @Prop({ type: Patient, required: true })
   patient: Patient;
 
-  @Prop({ type: RequestedMedication, required: true })
-  medication: RequestedMedication;
+  @Prop({ type: [RequestedMedication], required: true })
+  medications: RequestedMedication[];
 
   @Prop({ type: String, enum: RequestStatus, default: RequestStatus.EN_ATTENTE })
   status: RequestStatus;
@@ -65,6 +72,9 @@ export class MedicationRequest extends Document {
 
   @Prop({ default: false })
   isUrgent: boolean;
+
+  @Prop({ default: false })
+  requestsDelivery: boolean;
 
   @Prop()
   prescriptionImageUrl?: string;

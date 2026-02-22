@@ -4,7 +4,8 @@ export declare enum UserRole {
     MEDECIN = "medecin",
     PHARMACIE = "pharmacie",
     CENTRE_ANALYSE = "centre_analyse",
-    CLINIQUE = "clinique"
+    CLINIQUE = "clinique",
+    ADMIN = "admin"
 }
 export type UserDocument = User & Document;
 export declare class User {

@@ -9,12 +9,19 @@ export declare class PharmacyController {
     private readonly statisticsService;
     private readonly requestService;
     constructor(stockService: PharmacyStockService, statisticsService: PharmacyStatisticsService, requestService: MedicationRequestService);
+    uploadPrescription(file: Express.Multer.File): Promise<{
+        success: boolean;
+        url: string;
+        filename: string;
+        size: number;
+    }>;
     getDashboard(pharmacyId: string): Promise<{
         pharmacyInfo: {
             id: string;
             name: string;
             totalOrders: number;
             totalPackages: number;
+            offersDelivery: boolean;
         };
         medicationRequests: (import("mongoose").Document<unknown, {}, import("./schemas/medication-request.schema").MedicationRequest, {}, {}> & import("./schemas/medication-request.schema").MedicationRequest & Required<{
             _id: import("mongoose").Types.ObjectId;
@@ -51,6 +58,11 @@ export declare class PharmacyController {
     }>;
     getAllPharmacies(): Promise<{
         pharmacyId: string;
+        name: string;
+        address: string;
+        latitude: number;
+        longitude: number;
+        offersDelivery: boolean;
     }[]>;
     getAvailableMedications(pharmacyId: string): Promise<{
         id: string;

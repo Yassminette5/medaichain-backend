@@ -6,7 +6,7 @@ export declare class ProfilesController {
     constructor(profilesService: ProfilesService, authService: AuthService);
     getMyProfile(req: any): Promise<any>;
     updateDoctorProfile(req: any, data: any): Promise<any>;
-    updatePatientProfile(req: any, data: any): Promise<any>;
+    updatePatientInformation(req: any, data: any): Promise<any>;
     updatePharmacyProfile(req: any, data: any): Promise<import("./schemas/pharmacy-profile.schema").PharmacyProfileDocument>;
     updateLabProfile(req: any, data: any): Promise<import("./schemas/lab-profile.schema").LabProfileDocument>;
     updateClinicProfile(req: any, data: any): Promise<import("./schemas/clinic-profile.schema").ClinicProfileDocument>;

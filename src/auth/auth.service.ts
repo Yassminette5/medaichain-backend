@@ -86,7 +86,7 @@ export class AuthService {
                     wilaya: registerDto.gouvernorat || '',
                 });
             } else if (registerDto.role === UserRole.PATIENT) {
-                await this.profilesService.upsertPatientProfile(user._id.toString(), {
+                await this.profilesService.upsertPatientInformation(user._id.toString(), {
                     fullName: registerDto.fullName || 'Utilisateur',
                     age: 0, // Default for required field if still strict
                     gender: null,
@@ -95,16 +95,21 @@ export class AuthService {
             }
         } catch (error) {
             console.error(`Erreur lors de la création du profil pour le rôle ${registerDto.role}:`, error);
-            // Optionally: throw error if profile is critical
-            // throw new BadRequestException('La création du profil a échoué');
+            // Re-throw to ensure the client knows something went wrong, 
+            // but after user was created we might want to be careful.
+            // However, the user says "it wasn't created", so we should throw.
+            throw new BadRequestException(`La création du profil a échoué: ${error.message}`);
         }
 
+        // Récupérer l'utilisateur à jour (avec isProfileCompleted et patientInformation)
+        const updatedUser = await this.usersService.findById(user._id.toString());
+
         // Générer les tokens
-        const tokens = await this.generateTokens(user);
+        const tokens = await this.generateTokens(updatedUser);
 
         return {
             message: 'Inscription réussie',
-            user: await this.sanitizeUser(user),
+            user: await this.sanitizeUser(updatedUser),
             ...tokens,
         };
     }
@@ -280,6 +285,8 @@ export class AuthService {
                     mergedUser.height = pData.height;
                     mergedUser.weight = pData.weight;
                     mergedUser.allergies = pData.allergies;
+                    // Reference to the shared information document
+                    mergedUser.patientInformation = user.patientInformation;
                 } else if (roleLower === UserRole.MEDECIN.toString()) {
                     mergedUser.fullName = pData.fullName || mergedUser.fullName;
                     mergedUser.speciality = pData.speciality;

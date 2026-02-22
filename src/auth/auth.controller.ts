@@ -74,7 +74,7 @@ export class AuthController {
     @ApiResponse({ status: 200, description: 'Profil utilisateur' })
     @ApiResponse({ status: 401, description: 'Non autorisé' })
     async getProfile(@Request() req) {
-        return this.authService.getProfile(req.user.sub);
+        return this.authService.getProfile(req.user.userId);
     }
 
     @UseGuards(JwtAuthGuard)
@@ -84,6 +84,6 @@ export class AuthController {
     @ApiOperation({ summary: 'Marquer le profil comme complété' })
     @ApiResponse({ status: 200, description: 'Profil complété' })
     async completeProfile(@Request() req) {
-        return this.authService.completeProfile(req.user.sub);
+        return this.authService.completeProfile(req.user.userId);
     }
 }

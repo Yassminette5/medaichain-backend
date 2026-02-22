@@ -1,6 +1,6 @@
 import { Model } from 'mongoose';
 import { DoctorProfile, DoctorProfileDocument } from './schemas/doctor-profile.schema';
-import { PatientProfile, PatientProfileDocument } from './schemas/patient-profile.schema';
+import { PatientInformation, PatientInformationDocument } from './schemas/patient_information.schema';
 import { PharmacyProfile, PharmacyProfileDocument } from './schemas/pharmacy-profile.schema';
 import { LabProfile, LabProfileDocument } from './schemas/lab-profile.schema';
 import { ClinicProfile, ClinicProfileDocument } from './schemas/clinic-profile.schema';
@@ -13,10 +13,10 @@ export declare class ProfilesService {
     private labModel;
     private clinicModel;
     private usersService;
-    constructor(doctorModel: Model<DoctorProfileDocument>, patientModel: Model<PatientProfileDocument>, pharmacyModel: Model<PharmacyProfileDocument>, labModel: Model<LabProfileDocument>, clinicModel: Model<ClinicProfileDocument>, usersService: UsersService);
+    constructor(doctorModel: Model<DoctorProfileDocument>, patientModel: Model<PatientInformationDocument>, pharmacyModel: Model<PharmacyProfileDocument>, labModel: Model<LabProfileDocument>, clinicModel: Model<ClinicProfileDocument>, usersService: UsersService);
     getProfile(userId: string, role: UserRole): Promise<any>;
     upsertDoctorProfile(userId: string, data: Partial<DoctorProfile>): Promise<DoctorProfileDocument>;
-    upsertPatientProfile(userId: string, data: Partial<PatientProfile>): Promise<PatientProfileDocument>;
+    upsertPatientInformation(userId: string, data: Partial<PatientInformation>): Promise<PatientInformationDocument>;
     upsertPharmacyProfile(userId: string, data: Partial<PharmacyProfile>): Promise<PharmacyProfileDocument>;
     upsertLabProfile(userId: string, data: Partial<LabProfile>): Promise<LabProfileDocument>;
     upsertClinicProfile(userId: string, data: Partial<ClinicProfile>): Promise<ClinicProfileDocument>;

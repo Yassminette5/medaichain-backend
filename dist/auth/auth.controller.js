@@ -38,10 +38,10 @@ let AuthController = class AuthController {
         return this.authService.refreshToken(refreshTokenDto.refreshToken);
     }
     async getProfile(req) {
-        return this.authService.getProfile(req.user.sub);
+        return this.authService.getProfile(req.user.userId);
     }
     async completeProfile(req) {
-        return this.authService.completeProfile(req.user.sub);
+        return this.authService.completeProfile(req.user.userId);
     }
 };
 exports.AuthController = AuthController;

@@ -17,7 +17,7 @@ const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 const doctor_profile_schema_1 = require("./schemas/doctor-profile.schema");
-const patient_profile_schema_1 = require("./schemas/patient-profile.schema");
+const patient_information_schema_1 = require("./schemas/patient_information.schema");
 const pharmacy_profile_schema_1 = require("./schemas/pharmacy-profile.schema");
 const lab_profile_schema_1 = require("./schemas/lab-profile.schema");
 const clinic_profile_schema_1 = require("./schemas/clinic-profile.schema");
@@ -33,50 +33,75 @@ let ProfilesService = class ProfilesService {
         this.usersService = usersService;
     }
     async getProfile(userId, role) {
-        console.log(`[ProfilesService] Fetching profile for userId: ${userId}, role: ${role}`);
+        const roleLower = role.toString().toLowerCase();
+        console.log(`[ProfilesService] Fetching profile for userId: ${userId}, role: ${roleLower}`);
         const objectId = new mongoose_2.Types.ObjectId(userId);
-        switch (role) {
-            case user_schema_1.UserRole.MEDECIN:
+        switch (roleLower) {
+            case user_schema_1.UserRole.MEDECIN.toString():
                 return this.doctorModel.findOne({ userId: objectId }).exec();
-            case user_schema_1.UserRole.PATIENT:
+            case user_schema_1.UserRole.PATIENT.toString():
                 const patientProfile = await this.patientModel.findOne({ userId: objectId }).exec();
                 console.log(`[ProfilesService] Patient profile found: ${!!patientProfile}`);
                 return patientProfile;
-            case user_schema_1.UserRole.PHARMACIE:
+            case user_schema_1.UserRole.PHARMACIE.toString():
                 return this.pharmacyModel.findOne({ userId: objectId }).exec();
-            case user_schema_1.UserRole.CENTRE_ANALYSE:
+            case user_schema_1.UserRole.CENTRE_ANALYSE.toString():
                 return this.labModel.findOne({ userId: objectId }).exec();
-            case user_schema_1.UserRole.CLINIQUE:
+            case user_schema_1.UserRole.CLINIQUE.toString():
                 return this.clinicModel.findOne({ userId: objectId }).exec();
             default:
+                console.warn(`[ProfilesService] Role match failed for: ${roleLower}`);
                 throw new common_1.BadRequestException('Rôle invalide');
         }
     }
     async upsertDoctorProfile(userId, data) {
+        if (!userId || userId === 'undefined') {
+            throw new common_1.BadRequestException('ID utilisateur manquant pour la mise à jour du profil médecin');
+        }
         const objectId = new mongoose_2.Types.ObjectId(userId);
         const profile = await this.doctorModel.findOneAndUpdate({ userId: objectId }, { ...data, userId: objectId }, { upsert: true, new: true }).exec();
         await this.usersService.markProfileCompleted(userId);
         return profile;
     }
-    async upsertPatientProfile(userId, data) {
+    async upsertPatientInformation(userId, data) {
+        if (!userId || userId === 'undefined') {
+            throw new common_1.BadRequestException('ID utilisateur manquant pour la mise à jour des informations');
+        }
         const objectId = new mongoose_2.Types.ObjectId(userId);
-        const profile = await this.patientModel.findOneAndUpdate({ userId: objectId }, { ...data, userId: objectId }, { upsert: true, new: true }).exec();
+        console.log(`[ProfilesService] Upserting PatientInformation for userId: ${userId}`);
+        const profile = await this.patientModel.findByIdAndUpdate(objectId, {
+            ...data,
+            userId: objectId
+        }, { upsert: true, new: true, setDefaultsOnInsert: true }).exec();
+        console.log(`[ProfilesService] PatientInformation upserted: ${profile._id}`);
+        await this.usersService.update(userId, {
+            patientInformation: objectId
+        });
         await this.usersService.markProfileCompleted(userId);
         return profile;
     }
     async upsertPharmacyProfile(userId, data) {
+        if (!userId || userId === 'undefined') {
+            throw new common_1.BadRequestException('ID utilisateur manquant pour la mise à jour du profil pharmacie');
+        }
         const objectId = new mongoose_2.Types.ObjectId(userId);
         const profile = await this.pharmacyModel.findOneAndUpdate({ userId: objectId }, { ...data, userId: objectId }, { upsert: true, new: true }).exec();
         await this.usersService.markProfileCompleted(userId);
         return profile;
     }
     async upsertLabProfile(userId, data) {
+        if (!userId || userId === 'undefined') {
+            throw new common_1.BadRequestException('ID utilisateur manquant pour la mise à jour du profil laboratoire');
+        }
         const objectId = new mongoose_2.Types.ObjectId(userId);
         const profile = await this.labModel.findOneAndUpdate({ userId: objectId }, { ...data, userId: objectId }, { upsert: true, new: true }).exec();
         await this.usersService.markProfileCompleted(userId);
         return profile;
     }
     async upsertClinicProfile(userId, data) {
+        if (!userId || userId === 'undefined') {
+            throw new common_1.BadRequestException('ID utilisateur manquant pour la mise à jour du profil clinique');
+        }
         const objectId = new mongoose_2.Types.ObjectId(userId);
         const profile = await this.clinicModel.findOneAndUpdate({ userId: objectId }, { ...data, userId: objectId }, { upsert: true, new: true }).exec();
         await this.usersService.markProfileCompleted(userId);
@@ -117,7 +142,7 @@ exports.ProfilesService = ProfilesService;
 exports.ProfilesService = ProfilesService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(doctor_profile_schema_1.DoctorProfile.name)),
-    __param(1, (0, mongoose_1.InjectModel)(patient_profile_schema_1.PatientProfile.name)),
+    __param(1, (0, mongoose_1.InjectModel)(patient_information_schema_1.PatientInformation.name)),
     __param(2, (0, mongoose_1.InjectModel)(pharmacy_profile_schema_1.PharmacyProfile.name)),
     __param(3, (0, mongoose_1.InjectModel)(lab_profile_schema_1.LabProfile.name)),
     __param(4, (0, mongoose_1.InjectModel)(clinic_profile_schema_1.ClinicProfile.name)),

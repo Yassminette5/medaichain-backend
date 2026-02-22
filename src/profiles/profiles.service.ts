@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { DoctorProfile, DoctorProfileDocument } from './schemas/doctor-profile.schema';
-import { PatientProfile, PatientProfileDocument } from './schemas/patient-profile.schema';
+import { PatientInformation, PatientInformationDocument } from './schemas/patient_information.schema';
 import { PharmacyProfile, PharmacyProfileDocument } from './schemas/pharmacy-profile.schema';
 import { LabProfile, LabProfileDocument } from './schemas/lab-profile.schema';
 import { ClinicProfile, ClinicProfileDocument } from './schemas/clinic-profile.schema';
@@ -13,7 +13,7 @@ import { UserRole } from '../users/schemas/user.schema';
 export class ProfilesService {
     constructor(
         @InjectModel(DoctorProfile.name) private doctorModel: Model<DoctorProfileDocument>,
-        @InjectModel(PatientProfile.name) private patientModel: Model<PatientProfileDocument>,
+        @InjectModel(PatientInformation.name) private patientModel: Model<PatientInformationDocument>,
         @InjectModel(PharmacyProfile.name) private pharmacyModel: Model<PharmacyProfileDocument>,
         @InjectModel(LabProfile.name) private labModel: Model<LabProfileDocument>,
         @InjectModel(ClinicProfile.name) private clinicModel: Model<ClinicProfileDocument>,
@@ -47,6 +47,9 @@ export class ProfilesService {
 
     // ========== CRÉER/METTRE À JOUR PROFIL MÉDECIN ==========
     async upsertDoctorProfile(userId: string, data: Partial<DoctorProfile>): Promise<DoctorProfileDocument> {
+        if (!userId || userId === 'undefined') {
+            throw new BadRequestException('ID utilisateur manquant pour la mise à jour du profil médecin');
+        }
         const objectId = new Types.ObjectId(userId);
 
         const profile = await this.doctorModel.findOneAndUpdate(
@@ -62,14 +65,30 @@ export class ProfilesService {
     }
 
     // ========== CRÉER/METTRE À JOUR PROFIL PATIENT ==========
-    async upsertPatientProfile(userId: string, data: Partial<PatientProfile>): Promise<PatientProfileDocument> {
+    async upsertPatientInformation(userId: string, data: Partial<PatientInformation>): Promise<PatientInformationDocument> {
+        if (!userId || userId === 'undefined') {
+            throw new BadRequestException('ID utilisateur manquant pour la mise à jour des informations');
+        }
         const objectId = new Types.ObjectId(userId);
 
-        const profile = await this.patientModel.findOneAndUpdate(
-            { userId: objectId },
-            { ...data, userId: objectId },
-            { upsert: true, new: true }
+        console.log(`[ProfilesService] Upserting PatientInformation for userId: ${userId}`);
+
+        // On utilise l'ID de l'utilisateur comme ID unique pour ses informations
+        const profile = await this.patientModel.findByIdAndUpdate(
+            objectId,
+            {
+                ...data,
+                userId: objectId
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
         ).exec();
+
+        console.log(`[ProfilesService] PatientInformation upserted: ${profile._id}`);
+
+        // Lier directement dans le document User
+        await this.usersService.update(userId, {
+            patientInformation: objectId
+        } as any);
 
         await this.usersService.markProfileCompleted(userId);
 
@@ -78,6 +97,9 @@ export class ProfilesService {
 
     // ========== CRÉER/METTRE À JOUR PROFIL PHARMACIE ==========
     async upsertPharmacyProfile(userId: string, data: Partial<PharmacyProfile>): Promise<PharmacyProfileDocument> {
+        if (!userId || userId === 'undefined') {
+            throw new BadRequestException('ID utilisateur manquant pour la mise à jour du profil pharmacie');
+        }
         const objectId = new Types.ObjectId(userId);
 
         const profile = await this.pharmacyModel.findOneAndUpdate(
@@ -93,6 +115,9 @@ export class ProfilesService {
 
     // ========== CRÉER/METTRE À JOUR PROFIL LAB ==========
     async upsertLabProfile(userId: string, data: Partial<LabProfile>): Promise<LabProfileDocument> {
+        if (!userId || userId === 'undefined') {
+            throw new BadRequestException('ID utilisateur manquant pour la mise à jour du profil laboratoire');
+        }
         const objectId = new Types.ObjectId(userId);
 
         const profile = await this.labModel.findOneAndUpdate(
@@ -108,6 +133,9 @@ export class ProfilesService {
 
     // ========== CRÉER/METTRE À JOUR PROFIL CLINIQUE ==========
     async upsertClinicProfile(userId: string, data: Partial<ClinicProfile>): Promise<ClinicProfileDocument> {
+        if (!userId || userId === 'undefined') {
+            throw new BadRequestException('ID utilisateur manquant pour la mise à jour du profil clinique');
+        }
         const objectId = new Types.ObjectId(userId);
 
         const profile = await this.clinicModel.findOneAndUpdate(

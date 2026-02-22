@@ -12,7 +12,7 @@ const mongoose_1 = require("@nestjs/mongoose");
 const profiles_service_1 = require("./profiles.service");
 const profiles_controller_1 = require("./profiles.controller");
 const doctor_profile_schema_1 = require("./schemas/doctor-profile.schema");
-const patient_profile_schema_1 = require("./schemas/patient-profile.schema");
+const patient_information_schema_1 = require("./schemas/patient_information.schema");
 const pharmacy_profile_schema_1 = require("./schemas/pharmacy-profile.schema");
 const lab_profile_schema_1 = require("./schemas/lab-profile.schema");
 const clinic_profile_schema_1 = require("./schemas/clinic-profile.schema");
@@ -26,7 +26,7 @@ exports.ProfilesModule = ProfilesModule = __decorate([
         imports: [
             mongoose_1.MongooseModule.forFeature([
                 { name: doctor_profile_schema_1.DoctorProfile.name, schema: doctor_profile_schema_1.DoctorProfileSchema },
-                { name: patient_profile_schema_1.PatientProfile.name, schema: patient_profile_schema_1.PatientProfileSchema },
+                { name: patient_information_schema_1.PatientInformation.name, schema: patient_information_schema_1.PatientInformationSchema },
                 { name: pharmacy_profile_schema_1.PharmacyProfile.name, schema: pharmacy_profile_schema_1.PharmacyProfileSchema },
                 { name: lab_profile_schema_1.LabProfile.name, schema: lab_profile_schema_1.LabProfileSchema },
                 { name: clinic_profile_schema_1.ClinicProfile.name, schema: clinic_profile_schema_1.ClinicProfileSchema },

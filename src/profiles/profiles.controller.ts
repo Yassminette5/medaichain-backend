@@ -34,7 +34,7 @@ export class ProfilesController {
     @Get('me')
     @ApiOperation({ summary: 'Obtenir mon profil selon mon rôle' })
     async getMyProfile(@Request() req) {
-        return this.profilesService.getProfile(req.user.sub, req.user.role);
+        return this.profilesService.getProfile(req.user.userId, req.user.role);
     }
 
     // ========== PROFIL MÉDECIN ==========
@@ -44,8 +44,8 @@ export class ProfilesController {
     @Put('doctor')
     @ApiOperation({ summary: 'Créer/Mettre à jour mon profil médecin' })
     async updateDoctorProfile(@Request() req, @Body() data: any) {
-        await this.profilesService.upsertDoctorProfile(req.user.sub, data);
-        return this.authService.getProfile(req.user.sub);
+        await this.profilesService.upsertDoctorProfile(req.user.userId, data);
+        return this.authService.getProfile(req.user.userId);
     }
 
     // ========== PROFIL PATIENT ==========
@@ -54,9 +54,9 @@ export class ProfilesController {
     @ApiBearerAuth()
     @Put('patient')
     @ApiOperation({ summary: 'Créer/Mettre à jour mon profil patient' })
-    async updatePatientProfile(@Request() req, @Body() data: any) {
-        await this.profilesService.upsertPatientProfile(req.user.sub, data);
-        return this.authService.getProfile(req.user.sub);
+    async updatePatientInformation(@Request() req, @Body() data: any) {
+        await this.profilesService.upsertPatientInformation(req.user.userId, data);
+        return this.authService.getProfile(req.user.userId);
     }
 
     // ========== PROFIL PHARMACIE ==========
@@ -66,7 +66,7 @@ export class ProfilesController {
     @Put('pharmacy')
     @ApiOperation({ summary: 'Créer/Mettre à jour mon profil pharmacie' })
     async updatePharmacyProfile(@Request() req, @Body() data: any) {
-        return this.profilesService.upsertPharmacyProfile(req.user.sub, data);
+        return this.profilesService.upsertPharmacyProfile(req.user.userId, data);
     }
 
     // ========== PROFIL LAB ==========
@@ -76,7 +76,7 @@ export class ProfilesController {
     @Put('lab')
     @ApiOperation({ summary: 'Créer/Mettre à jour mon profil laboratoire' })
     async updateLabProfile(@Request() req, @Body() data: any) {
-        return this.profilesService.upsertLabProfile(req.user.sub, data);
+        return this.profilesService.upsertLabProfile(req.user.userId, data);
     }
 
     // ========== PROFIL CLINIQUE ==========
@@ -86,7 +86,7 @@ export class ProfilesController {
     @Put('clinic')
     @ApiOperation({ summary: 'Créer/Mettre à jour mon profil clinique' })
     async updateClinicProfile(@Request() req, @Body() data: any) {
-        return this.profilesService.upsertClinicProfile(req.user.sub, data);
+        return this.profilesService.upsertClinicProfile(req.user.userId, data);
     }
 
     // ========== RECHERCHE PUBLIQUE ==========

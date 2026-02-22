@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
 export enum UserRole {
     PATIENT = 'patient',
@@ -42,6 +42,9 @@ export class User {
 
     @Prop()
     lastLoginAt: Date;
+
+    @Prop({ type: Types.ObjectId, ref: 'PatientInformation' })
+    patientInformation: Types.ObjectId;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

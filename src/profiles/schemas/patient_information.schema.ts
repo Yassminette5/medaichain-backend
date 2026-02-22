@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
-export type PatientProfileDocument = PatientProfile & Document;
+export type PatientInformationDocument = PatientInformation & Document;
 
 export enum Gender {
     MALE = 'male',
@@ -9,7 +9,7 @@ export enum Gender {
 }
 
 @Schema({ timestamps: true })
-export class PatientProfile {
+export class PatientInformation {
     @Prop({ type: Types.ObjectId, ref: 'User', required: true, unique: true })
     userId: Types.ObjectId;
 
@@ -32,4 +32,4 @@ export class PatientProfile {
     weight: number; // en kg
 }
 
-export const PatientProfileSchema = SchemaFactory.createForClass(PatientProfile);
+export const PatientInformationSchema = SchemaFactory.createForClass(PatientInformation);

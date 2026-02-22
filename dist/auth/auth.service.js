@@ -75,7 +75,7 @@ let AuthService = class AuthService {
                 });
             }
             else if (registerDto.role === user_schema_1.UserRole.PATIENT) {
-                await this.profilesService.upsertPatientProfile(user._id.toString(), {
+                await this.profilesService.upsertPatientInformation(user._id.toString(), {
                     fullName: registerDto.fullName || 'Utilisateur',
                     age: 0,
                     gender: null,
@@ -85,11 +85,13 @@ let AuthService = class AuthService {
         }
         catch (error) {
             console.error(`Erreur lors de la création du profil pour le rôle ${registerDto.role}:`, error);
+            throw new common_1.BadRequestException(`La création du profil a échoué: ${error.message}`);
         }
-        const tokens = await this.generateTokens(user);
+        const updatedUser = await this.usersService.findById(user._id.toString());
+        const tokens = await this.generateTokens(updatedUser);
         return {
             message: 'Inscription réussie',
-            user: await this.sanitizeUser(user),
+            user: await this.sanitizeUser(updatedUser),
             ...tokens,
         };
     }
@@ -210,7 +212,8 @@ let AuthService = class AuthService {
             if (profile) {
                 console.log(`[AuthService] Profile found for user ${user.email}, merging...`);
                 const pData = profile.toObject ? profile.toObject() : profile;
-                if (user.role === user_schema_1.UserRole.PATIENT) {
+                const roleLower = user.role.toString().toLowerCase();
+                if (roleLower === user_schema_1.UserRole.PATIENT.toString()) {
                     console.log(`[AuthService] Merging Patient data: ${pData.fullName}`);
                     mergedUser.fullName = pData.fullName || mergedUser.fullName;
                     mergedUser.gender = pData.gender;
@@ -218,8 +221,9 @@ let AuthService = class AuthService {
                     mergedUser.height = pData.height;
                     mergedUser.weight = pData.weight;
                     mergedUser.allergies = pData.allergies;
+                    mergedUser.patientInformation = user.patientInformation;
                 }
-                else if (user.role === user_schema_1.UserRole.MEDECIN) {
+                else if (roleLower === user_schema_1.UserRole.MEDECIN.toString()) {
                     mergedUser.fullName = pData.fullName || mergedUser.fullName;
                     mergedUser.speciality = pData.speciality;
                     mergedUser.hospital = pData.hospital;

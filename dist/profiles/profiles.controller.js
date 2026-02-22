@@ -27,24 +27,24 @@ let ProfilesController = class ProfilesController {
         this.authService = authService;
     }
     async getMyProfile(req) {
-        return this.profilesService.getProfile(req.user.sub, req.user.role);
+        return this.profilesService.getProfile(req.user.userId, req.user.role);
     }
     async updateDoctorProfile(req, data) {
-        await this.profilesService.upsertDoctorProfile(req.user.sub, data);
-        return this.authService.getProfile(req.user.sub);
+        await this.profilesService.upsertDoctorProfile(req.user.userId, data);
+        return this.authService.getProfile(req.user.userId);
     }
-    async updatePatientProfile(req, data) {
-        await this.profilesService.upsertPatientProfile(req.user.sub, data);
-        return this.authService.getProfile(req.user.sub);
+    async updatePatientInformation(req, data) {
+        await this.profilesService.upsertPatientInformation(req.user.userId, data);
+        return this.authService.getProfile(req.user.userId);
     }
     async updatePharmacyProfile(req, data) {
-        return this.profilesService.upsertPharmacyProfile(req.user.sub, data);
+        return this.profilesService.upsertPharmacyProfile(req.user.userId, data);
     }
     async updateLabProfile(req, data) {
-        return this.profilesService.upsertLabProfile(req.user.sub, data);
+        return this.profilesService.upsertLabProfile(req.user.userId, data);
     }
     async updateClinicProfile(req, data) {
-        return this.profilesService.upsertClinicProfile(req.user.sub, data);
+        return this.profilesService.upsertClinicProfile(req.user.userId, data);
     }
     async searchDoctors(speciality, city, wilaya) {
         return this.profilesService.searchDoctors({ speciality, city, wilaya });
@@ -90,7 +90,7 @@ __decorate([
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
-], ProfilesController.prototype, "updatePatientProfile", null);
+], ProfilesController.prototype, "updatePatientInformation", null);
 __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)(user_schema_1.UserRole.PHARMACIE),

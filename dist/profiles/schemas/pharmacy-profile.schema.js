@@ -80,6 +80,10 @@ __decorate([
     __metadata("design:type", Number)
 ], PharmacyProfile.prototype, "deliveryRadius", void 0);
 __decorate([
+    (0, mongoose_1.Prop)({ default: 0 }),
+    __metadata("design:type", Number)
+], PharmacyProfile.prototype, "deliveryFee", void 0);
+__decorate([
     (0, mongoose_1.Prop)([String]),
     __metadata("design:type", Array)
 ], PharmacyProfile.prototype, "services", void 0);
@@ -95,6 +99,26 @@ __decorate([
     (0, mongoose_1.Prop)(),
     __metadata("design:type", Date)
 ], PharmacyProfile.prototype, "verifiedAt", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ default: true }),
+    __metadata("design:type", Boolean)
+], PharmacyProfile.prototype, "notificationsEnabled", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ default: true }),
+    __metadata("design:type", Boolean)
+], PharmacyProfile.prototype, "emailNotifications", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ default: true }),
+    __metadata("design:type", Boolean)
+], PharmacyProfile.prototype, "smsNotifications", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ default: true }),
+    __metadata("design:type", Boolean)
+], PharmacyProfile.prototype, "deliveryNotifications", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ default: true }),
+    __metadata("design:type", Boolean)
+], PharmacyProfile.prototype, "prescriptionNotifications", void 0);
 exports.PharmacyProfile = PharmacyProfile = __decorate([
     (0, mongoose_1.Schema)({ timestamps: true })
 ], PharmacyProfile);

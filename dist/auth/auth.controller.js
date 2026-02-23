@@ -43,6 +43,9 @@ let AuthController = class AuthController {
     async completeProfile(req) {
         return this.authService.completeProfile(req.user.sub);
     }
+    async changePassword(req, changePasswordDto) {
+        return this.authService.changePassword(req.user.sub, changePasswordDto);
+    }
 };
 exports.AuthController = AuthController;
 __decorate([
@@ -122,6 +125,20 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "completeProfile", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, common_1.Post)('change-password'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Changer le mot de passe' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Mot de passe changé avec succès' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: 'Mot de passe actuel incorrect' }),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "changePassword", null);
 exports.AuthController = AuthController = __decorate([
     (0, swagger_1.ApiTags)('Authentification'),
     (0, common_1.Controller)('auth'),

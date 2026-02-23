@@ -37,6 +37,12 @@ export declare class AuthService {
     completeProfile(userId: string): Promise<{
         message: string;
     }>;
+    changePassword(userId: string, changePasswordDto: {
+        currentPassword: string;
+        newPassword: string;
+    }): Promise<{
+        message: string;
+    }>;
     private generateTokens;
     private sanitizeUser;
 }

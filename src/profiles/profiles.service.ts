@@ -75,15 +75,20 @@ export class ProfilesService {
     async upsertPharmacyProfile(userId: string, data: Partial<PharmacyProfile>): Promise<PharmacyProfileDocument> {
         const objectId = new Types.ObjectId(userId);
 
-        const profile = await this.pharmacyModel.findOneAndUpdate(
-            { userId: objectId },
-            { ...data, userId: objectId },
-            { upsert: true, new: true }
-        ).exec();
+        try {
+            const profile = await this.pharmacyModel.findOneAndUpdate(
+                { userId: objectId },
+                { ...data, userId: objectId },
+                { upsert: true, new: true, runValidators: false }
+            ).exec();
 
-        await this.usersService.markProfileCompleted(userId);
+            await this.usersService.markProfileCompleted(userId);
 
-        return profile;
+            return profile;
+        } catch (error) {
+            console.error('Error updating pharmacy profile:', error);
+            throw error;
+        }
     }
 
     // ========== CRÉER/METTRE À JOUR PROFIL LAB ==========

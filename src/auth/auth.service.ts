@@ -211,6 +211,44 @@ export class AuthService {
         return { message: 'Profil complété' };
     }
 
+    // ========== CHANGER MOT DE PASSE ==========
+    async changePassword(userId: string, changePasswordDto: {
+        currentPassword: string;
+        newPassword: string;
+    }) {
+        const user = await this.usersService.findById(userId);
+
+        if (!user) {
+            throw new UnauthorizedException('Utilisateur non trouvé');
+        }
+
+        // Vérifier le mot de passe actuel
+        const isPasswordValid = await bcrypt.compare(
+            changePasswordDto.currentPassword,
+            user.password,
+        );
+
+        if (!isPasswordValid) {
+            throw new UnauthorizedException('Mot de passe actuel incorrect');
+        }
+
+        // Vérifier que le nouveau mot de passe est différent
+        if (changePasswordDto.currentPassword === changePasswordDto.newPassword) {
+            throw new BadRequestException(
+                'Le nouveau mot de passe doit être différent du mot de passe actuel',
+            );
+        }
+
+        // Hasher le nouveau mot de passe
+        const hashedPassword = await bcrypt.hash(changePasswordDto.newPassword, 10);
+
+        await this.usersService.update(userId, { password: hashedPassword });
+
+        return {
+            message: 'Mot de passe changé avec succès',
+        };
+    }
+
     // ========== HELPERS ==========
     private async generateTokens(user: UserDocument) {
         const payload = {

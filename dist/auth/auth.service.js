@@ -161,6 +161,24 @@ let AuthService = class AuthService {
         await this.usersService.markProfileCompleted(userId);
         return { message: 'Profil complété' };
     }
+    async changePassword(userId, changePasswordDto) {
+        const user = await this.usersService.findById(userId);
+        if (!user) {
+            throw new common_1.UnauthorizedException('Utilisateur non trouvé');
+        }
+        const isPasswordValid = await bcrypt.compare(changePasswordDto.currentPassword, user.password);
+        if (!isPasswordValid) {
+            throw new common_1.UnauthorizedException('Mot de passe actuel incorrect');
+        }
+        if (changePasswordDto.currentPassword === changePasswordDto.newPassword) {
+            throw new common_1.BadRequestException('Le nouveau mot de passe doit être différent du mot de passe actuel');
+        }
+        const hashedPassword = await bcrypt.hash(changePasswordDto.newPassword, 10);
+        await this.usersService.update(userId, { password: hashedPassword });
+        return {
+            message: 'Mot de passe changé avec succès',
+        };
+    }
     async generateTokens(user) {
         const payload = {
             sub: user._id.toString(),

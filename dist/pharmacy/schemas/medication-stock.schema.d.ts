@@ -11,6 +11,7 @@ export declare class MedicationStock extends Document {
     currentStock: number;
     maxStock: number;
     unit: string;
+    price: number;
     stockLevel: StockLevel;
 }
 export declare const MedicationStockSchema: import("mongoose").Schema<MedicationStock, import("mongoose").Model<MedicationStock, any, any, any, Document<unknown, any, MedicationStock, any, {}> & MedicationStock & Required<{

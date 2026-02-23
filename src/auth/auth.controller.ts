@@ -86,4 +86,18 @@ export class AuthController {
     async completeProfile(@Request() req) {
         return this.authService.completeProfile(req.user.sub);
     }
+
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @Post('change-password')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Changer le mot de passe' })
+    @ApiResponse({ status: 200, description: 'Mot de passe changé avec succès' })
+    @ApiResponse({ status: 401, description: 'Mot de passe actuel incorrect' })
+    async changePassword(
+        @Request() req,
+        @Body() changePasswordDto: { currentPassword: string; newPassword: string },
+    ) {
+        return this.authService.changePassword(req.user.sub, changePasswordDto);
+    }
 }

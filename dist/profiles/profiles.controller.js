@@ -34,7 +34,13 @@ let ProfilesController = class ProfilesController {
         return this.profilesService.upsertPatientProfile(req.user.sub, data);
     }
     async updatePharmacyProfile(req, data) {
-        return this.profilesService.upsertPharmacyProfile(req.user.sub, data);
+        try {
+            return await this.profilesService.upsertPharmacyProfile(req.user.sub, data);
+        }
+        catch (error) {
+            console.error('Pharmacy profile update error:', error);
+            throw error;
+        }
     }
     async updateLabProfile(req, data) {
         return this.profilesService.upsertLabProfile(req.user.sub, data);

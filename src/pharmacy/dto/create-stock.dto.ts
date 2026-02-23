@@ -21,6 +21,23 @@ export class CreateStockDto {
 }
 
 export class UpdateStockDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  dosage?: string;
+
+  @IsString()
+  @IsOptional()
+  unit?: string;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  price?: number;
+
   @IsNumber()
   @IsOptional()
   @Min(0)

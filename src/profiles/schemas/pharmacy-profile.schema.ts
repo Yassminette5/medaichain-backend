@@ -53,6 +53,9 @@ export class PharmacyProfile {
     @Prop()
     deliveryRadius: number; // en km
 
+    @Prop({ default: 0 })
+    deliveryFee: number; // Frais de livraison par défaut
+
     @Prop([String])
     services: string[]; // Services offerts
 
@@ -64,6 +67,22 @@ export class PharmacyProfile {
 
     @Prop()
     verifiedAt: Date;
+
+    // Notification preferences
+    @Prop({ default: true })
+    notificationsEnabled: boolean;
+
+    @Prop({ default: true })
+    emailNotifications: boolean;
+
+    @Prop({ default: true })
+    smsNotifications: boolean;
+
+    @Prop({ default: true })
+    deliveryNotifications: boolean;
+
+    @Prop({ default: true })
+    prescriptionNotifications: boolean;
 }
 
 export const PharmacyProfileSchema = SchemaFactory.createForClass(PharmacyProfile);

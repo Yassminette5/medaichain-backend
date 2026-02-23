@@ -46,6 +46,10 @@ __decorate([
     __metadata("design:type", String)
 ], MedicationStock.prototype, "unit", void 0);
 __decorate([
+    (0, mongoose_1.Prop)({ min: 0 }),
+    __metadata("design:type", Number)
+], MedicationStock.prototype, "price", void 0);
+__decorate([
     (0, mongoose_1.Prop)({ type: String, enum: StockLevel }),
     __metadata("design:type", String)
 ], MedicationStock.prototype, "stockLevel", void 0);

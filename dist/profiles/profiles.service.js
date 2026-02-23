@@ -63,9 +63,15 @@ let ProfilesService = class ProfilesService {
     }
     async upsertPharmacyProfile(userId, data) {
         const objectId = new mongoose_2.Types.ObjectId(userId);
-        const profile = await this.pharmacyModel.findOneAndUpdate({ userId: objectId }, { ...data, userId: objectId }, { upsert: true, new: true }).exec();
-        await this.usersService.markProfileCompleted(userId);
-        return profile;
+        try {
+            const profile = await this.pharmacyModel.findOneAndUpdate({ userId: objectId }, { ...data, userId: objectId }, { upsert: true, new: true, runValidators: false }).exec();
+            await this.usersService.markProfileCompleted(userId);
+            return profile;
+        }
+        catch (error) {
+            console.error('Error updating pharmacy profile:', error);
+            throw error;
+        }
     }
     async upsertLabProfile(userId, data) {
         const objectId = new mongoose_2.Types.ObjectId(userId);

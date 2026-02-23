@@ -4,8 +4,13 @@ export declare class CreateStockDto {
     currentStock: number;
     maxStock: number;
     unit?: string;
+    price?: number;
 }
 export declare class UpdateStockDto {
+    name?: string;
+    dosage?: string;
+    unit?: string;
+    price?: number;
     currentStock?: number;
     maxStock?: number;
 }

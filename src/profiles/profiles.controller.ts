@@ -57,7 +57,12 @@ export class ProfilesController {
     @Put('pharmacy')
     @ApiOperation({ summary: 'Créer/Mettre à jour mon profil pharmacie' })
     async updatePharmacyProfile(@Request() req, @Body() data: any) {
-        return this.profilesService.upsertPharmacyProfile(req.user.sub, data);
+        try {
+            return await this.profilesService.upsertPharmacyProfile(req.user.sub, data);
+        } catch (error) {
+            console.error('Pharmacy profile update error:', error);
+            throw error;
+        }
     }
 
     // ========== PROFIL LAB ==========

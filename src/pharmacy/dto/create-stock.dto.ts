@@ -18,6 +18,11 @@ export class CreateStockDto {
   @IsString()
   @IsOptional()
   unit?: string = 'unités';
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  price?: number;
 }
 
 export class UpdateStockDto {

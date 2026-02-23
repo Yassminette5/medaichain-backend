@@ -27,6 +27,9 @@ export class MedicationStock extends Document {
   @Prop({ default: 'unités' })
   unit: string;
 
+  @Prop({ required: false, min: 0 })
+  price?: number;
+
   @Prop({ type: String, enum: StockLevel })
   stockLevel: StockLevel;
 }

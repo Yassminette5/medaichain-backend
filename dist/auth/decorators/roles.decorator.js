@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Roles = void 0;
+exports.Roles = exports.ROLES_KEY = void 0;
 const common_1 = require("@nestjs/common");
-const roles_guard_1 = require("../guards/roles.guard");
-const Roles = (...roles) => (0, common_1.SetMetadata)(roles_guard_1.ROLES_KEY, roles);
+exports.ROLES_KEY = 'roles';
+const Roles = (...roles) => (0, common_1.SetMetadata)(exports.ROLES_KEY, roles);
 exports.Roles = Roles;
 //# sourceMappingURL=roles.decorator.js.map

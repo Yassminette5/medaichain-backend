@@ -15,7 +15,7 @@ export declare const LabProfileSchema: import("mongoose").Schema<LabProfile, imp
     _id: Types.ObjectId;
 } & {
     __v: number;
-}, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, LabProfile, Document<unknown, {}, import("mongoose").FlatRecord<LabProfile>, {}, import("mongoose").ResolveSchemaOptions<import("mongoose").DefaultSchemaOptions>> & import("mongoose").FlatRecord<LabProfile> & {
+}, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, LabProfile, Document<unknown, {}, import("mongoose").FlatRecord<LabProfile>, {}, import("mongoose").DefaultSchemaOptions> & import("mongoose").FlatRecord<LabProfile> & {
     _id: Types.ObjectId;
 } & {
     __v: number;

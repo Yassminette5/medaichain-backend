@@ -10,7 +10,7 @@ export declare const OCRDataSchema: import("mongoose").Schema<OCRData, import("m
     _id: Types.ObjectId;
 } & {
     __v: number;
-}, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, OCRData, Document<unknown, {}, import("mongoose").FlatRecord<OCRData>, {}, import("mongoose").ResolveSchemaOptions<import("mongoose").DefaultSchemaOptions>> & import("mongoose").FlatRecord<OCRData> & {
+}, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, OCRData, Document<unknown, {}, import("mongoose").FlatRecord<OCRData>, {}, import("mongoose").DefaultSchemaOptions> & import("mongoose").FlatRecord<OCRData> & {
     _id: Types.ObjectId;
 } & {
     __v: number;

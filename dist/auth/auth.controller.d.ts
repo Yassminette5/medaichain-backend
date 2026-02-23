@@ -29,4 +29,10 @@ export declare class AuthController {
     completeProfile(req: any): Promise<{
         message: string;
     }>;
+    changePassword(req: any, changePasswordDto: {
+        currentPassword: string;
+        newPassword: string;
+    }): Promise<{
+        message: string;
+    }>;
 }

@@ -18,7 +18,7 @@ export declare const MedicineSchema: import("mongoose").Schema<Medicine, import(
     _id: Types.ObjectId;
 } & {
     __v: number;
-}, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, Medicine, Document<unknown, {}, import("mongoose").FlatRecord<Medicine>, {}, import("mongoose").ResolveSchemaOptions<import("mongoose").DefaultSchemaOptions>> & import("mongoose").FlatRecord<Medicine> & {
+}, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, Medicine, Document<unknown, {}, import("mongoose").FlatRecord<Medicine>, {}, import("mongoose").DefaultSchemaOptions> & import("mongoose").FlatRecord<Medicine> & {
     _id: Types.ObjectId;
 } & {
     __v: number;

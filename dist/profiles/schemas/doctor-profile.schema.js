@@ -13,6 +13,25 @@ exports.DoctorProfileSchema = exports.DoctorProfile = void 0;
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 let DoctorProfile = class DoctorProfile {
+    userId;
+    fullName;
+    speciality;
+    subSpeciality;
+    licenseNumber;
+    hospital;
+    clinicAddress;
+    city;
+    wilaya;
+    yearsOfExperience;
+    consultationFee;
+    languages;
+    workingDays;
+    workingHoursStart;
+    workingHoursEnd;
+    bio;
+    profilePhoto;
+    isVerified;
+    verifiedAt;
 };
 exports.DoctorProfile = DoctorProfile;
 __decorate([

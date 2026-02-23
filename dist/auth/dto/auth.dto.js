@@ -14,6 +14,24 @@ const class_validator_1 = require("class-validator");
 const swagger_1 = require("@nestjs/swagger");
 const user_schema_1 = require("../../users/schemas/user.schema");
 class RegisterDto {
+    email;
+    password;
+    phone;
+    role;
+    fullName;
+    speciality;
+    hospital;
+    licenseNumber;
+    wilaya;
+    yearsOfExperience;
+    centreName;
+    categorie;
+    localisation;
+    pharmacyName;
+    ownerName;
+    gouvernorat;
+    delegation;
+    address;
 }
 exports.RegisterDto = RegisterDto;
 __decorate([
@@ -69,6 +87,11 @@ __decorate([
     __metadata("design:type", String)
 ], RegisterDto.prototype, "wilaya", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ example: 5, required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], RegisterDto.prototype, "yearsOfExperience", void 0);
+__decorate([
     (0, swagger_1.ApiProperty)({ example: 'Laboratoire Alpha', required: false }),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
@@ -93,6 +116,12 @@ __decorate([
     __metadata("design:type", String)
 ], RegisterDto.prototype, "pharmacyName", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Dr. Pharmacien', required: false }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], RegisterDto.prototype, "ownerName", void 0);
+__decorate([
     (0, swagger_1.ApiProperty)({ example: 'Alger', required: false }),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
@@ -111,6 +140,8 @@ __decorate([
     __metadata("design:type", String)
 ], RegisterDto.prototype, "address", void 0);
 class LoginDto {
+    email;
+    password;
 }
 exports.LoginDto = LoginDto;
 __decorate([
@@ -125,6 +156,7 @@ __decorate([
     __metadata("design:type", String)
 ], LoginDto.prototype, "password", void 0);
 class ForgotPasswordDto {
+    email;
 }
 exports.ForgotPasswordDto = ForgotPasswordDto;
 __decorate([
@@ -133,6 +165,8 @@ __decorate([
     __metadata("design:type", String)
 ], ForgotPasswordDto.prototype, "email", void 0);
 class ResetPasswordDto {
+    token;
+    newPassword;
 }
 exports.ResetPasswordDto = ResetPasswordDto;
 __decorate([
@@ -148,6 +182,7 @@ __decorate([
     __metadata("design:type", String)
 ], ResetPasswordDto.prototype, "newPassword", void 0);
 class RefreshTokenDto {
+    refreshToken;
 }
 exports.RefreshTokenDto = RefreshTokenDto;
 __decorate([

@@ -1,6 +1,6 @@
 import { OcrService } from '../services/ocr.service';
 import { DeleteDocumentsDto } from '../dto/ocr.dto';
-import { Response } from 'express';
+import type { Response } from 'express';
 export declare class OcrController {
     private readonly ocrService;
     constructor(ocrService: OcrService);

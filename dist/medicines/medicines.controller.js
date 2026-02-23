@@ -18,6 +18,7 @@ const medicines_service_1 = require("./medicines.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const swagger_1 = require("@nestjs/swagger");
 let MedicinesController = class MedicinesController {
+    medicinesService;
     constructor(medicinesService) {
         this.medicinesService = medicinesService;
     }

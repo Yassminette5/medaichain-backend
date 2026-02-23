@@ -21,6 +21,7 @@ const ocr_service_1 = require("../services/ocr.service");
 const ocr_dto_1 = require("../dto/ocr.dto");
 const jwt_auth_guard_1 = require("../../auth/guards/jwt-auth.guard");
 let OcrController = class OcrController {
+    ocrService;
     constructor(ocrService) {
         this.ocrService = ocrService;
     }

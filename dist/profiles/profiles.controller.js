@@ -22,6 +22,8 @@ const roles_decorator_1 = require("../auth/decorators/roles.decorator");
 const user_schema_1 = require("../users/schemas/user.schema");
 const auth_service_1 = require("../auth/auth.service");
 let ProfilesController = class ProfilesController {
+    profilesService;
+    authService;
     constructor(profilesService, authService) {
         this.profilesService = profilesService;
         this.authService = authService;
@@ -38,7 +40,13 @@ let ProfilesController = class ProfilesController {
         return this.authService.getProfile(req.user.userId);
     }
     async updatePharmacyProfile(req, data) {
-        return this.profilesService.upsertPharmacyProfile(req.user.userId, data);
+        try {
+            return await this.profilesService.upsertPharmacyProfile(req.user.userId, data);
+        }
+        catch (error) {
+            console.error('Pharmacy profile update error:', error);
+            throw error;
+        }
     }
     async updateLabProfile(req, data) {
         return this.profilesService.upsertLabProfile(req.user.userId, data);

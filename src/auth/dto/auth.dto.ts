@@ -55,6 +55,10 @@ export class RegisterDto {
     @IsOptional()
     wilaya?: string;
 
+    @ApiProperty({ example: 5, required: false })
+    @IsOptional()
+    yearsOfExperience?: number;
+
     // Champs pour Centre d'Analyse
     @ApiProperty({ example: 'Laboratoire Alpha', required: false })
     @IsString()
@@ -76,6 +80,11 @@ export class RegisterDto {
     @IsString()
     @IsOptional()
     pharmacyName?: string;
+
+    @ApiProperty({ example: 'Dr. Pharmacien', required: false })
+    @IsString()
+    @IsOptional()
+    ownerName?: string;
 
     @ApiProperty({ example: 'Alger', required: false })
     @IsString()

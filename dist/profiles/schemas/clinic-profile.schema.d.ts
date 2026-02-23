@@ -31,7 +31,7 @@ export declare const ClinicProfileSchema: import("mongoose").Schema<ClinicProfil
     _id: Types.ObjectId;
 } & {
     __v: number;
-}, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, ClinicProfile, Document<unknown, {}, import("mongoose").FlatRecord<ClinicProfile>, {}, import("mongoose").ResolveSchemaOptions<import("mongoose").DefaultSchemaOptions>> & import("mongoose").FlatRecord<ClinicProfile> & {
+}, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, ClinicProfile, Document<unknown, {}, import("mongoose").FlatRecord<ClinicProfile>, {}, import("mongoose").DefaultSchemaOptions> & import("mongoose").FlatRecord<ClinicProfile> & {
     _id: Types.ObjectId;
 } & {
     __v: number;

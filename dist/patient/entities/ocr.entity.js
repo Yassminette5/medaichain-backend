@@ -13,6 +13,10 @@ exports.OCRDataSchema = exports.OCRData = void 0;
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 let OCRData = class OCRData {
+    userId;
+    title;
+    image_name;
+    description;
 };
 exports.OCRData = OCRData;
 __decorate([

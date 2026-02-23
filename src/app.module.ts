@@ -16,6 +16,11 @@ import { ProfilesModule } from './profiles/profiles.module';
 import { PatientModule } from './patient/patient.module';
 import { MedicinesModule } from './medicines/medicines.module';
 
+// Fedibenman modules (Pharmacie, Delivery, Notifications)
+import { PharmacyModule } from './pharmacy/pharmacy.module';
+import { DeliveryModule } from './delivery/delivery.module';
+import { NotificationModule } from './notifications/notification.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
@@ -41,6 +46,9 @@ import { MedicinesModule } from './medicines/medicines.module';
     ProfilesModule,
     PatientModule,
     MedicinesModule,
+    PharmacyModule,
+    DeliveryModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

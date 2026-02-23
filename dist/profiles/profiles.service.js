@@ -24,6 +24,12 @@ const clinic_profile_schema_1 = require("./schemas/clinic-profile.schema");
 const users_service_1 = require("../users/users.service");
 const user_schema_1 = require("../users/schemas/user.schema");
 let ProfilesService = class ProfilesService {
+    doctorModel;
+    patientModel;
+    pharmacyModel;
+    labModel;
+    clinicModel;
+    usersService;
     constructor(doctorModel, patientModel, pharmacyModel, labModel, clinicModel, usersService) {
         this.doctorModel = doctorModel;
         this.patientModel = patientModel;
@@ -85,9 +91,15 @@ let ProfilesService = class ProfilesService {
             throw new common_1.BadRequestException('ID utilisateur manquant pour la mise à jour du profil pharmacie');
         }
         const objectId = new mongoose_2.Types.ObjectId(userId);
-        const profile = await this.pharmacyModel.findOneAndUpdate({ userId: objectId }, { ...data, userId: objectId }, { upsert: true, new: true }).exec();
-        await this.usersService.markProfileCompleted(userId);
-        return profile;
+        try {
+            const profile = await this.pharmacyModel.findOneAndUpdate({ userId: objectId }, { ...data, userId: objectId }, { upsert: true, new: true, runValidators: false }).exec();
+            await this.usersService.markProfileCompleted(userId);
+            return profile;
+        }
+        catch (error) {
+            console.error('Error updating pharmacy profile:', error);
+            throw error;
+        }
     }
     async upsertLabProfile(userId, data) {
         if (!userId || userId === 'undefined') {

@@ -13,6 +13,32 @@ exports.PharmacyProfileSchema = exports.PharmacyProfile = void 0;
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 let PharmacyProfile = class PharmacyProfile {
+    userId;
+    pharmacyName;
+    ownerName;
+    licenseNumber;
+    address;
+    city;
+    wilaya;
+    postalCode;
+    gpsLatitude;
+    gpsLongitude;
+    workingDays;
+    openingTime;
+    closingTime;
+    is24Hours;
+    hasDelivery;
+    deliveryRadius;
+    deliveryFee;
+    services;
+    profilePhoto;
+    isVerified;
+    verifiedAt;
+    notificationsEnabled;
+    emailNotifications;
+    smsNotifications;
+    deliveryNotifications;
+    prescriptionNotifications;
 };
 exports.PharmacyProfile = PharmacyProfile;
 __decorate([
@@ -80,6 +106,10 @@ __decorate([
     __metadata("design:type", Number)
 ], PharmacyProfile.prototype, "deliveryRadius", void 0);
 __decorate([
+    (0, mongoose_1.Prop)({ default: 0 }),
+    __metadata("design:type", Number)
+], PharmacyProfile.prototype, "deliveryFee", void 0);
+__decorate([
     (0, mongoose_1.Prop)([String]),
     __metadata("design:type", Array)
 ], PharmacyProfile.prototype, "services", void 0);
@@ -95,6 +125,26 @@ __decorate([
     (0, mongoose_1.Prop)(),
     __metadata("design:type", Date)
 ], PharmacyProfile.prototype, "verifiedAt", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ default: true }),
+    __metadata("design:type", Boolean)
+], PharmacyProfile.prototype, "notificationsEnabled", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ default: true }),
+    __metadata("design:type", Boolean)
+], PharmacyProfile.prototype, "emailNotifications", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ default: true }),
+    __metadata("design:type", Boolean)
+], PharmacyProfile.prototype, "smsNotifications", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ default: true }),
+    __metadata("design:type", Boolean)
+], PharmacyProfile.prototype, "deliveryNotifications", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ default: true }),
+    __metadata("design:type", Boolean)
+], PharmacyProfile.prototype, "prescriptionNotifications", void 0);
 exports.PharmacyProfile = PharmacyProfile = __decorate([
     (0, mongoose_1.Schema)({ timestamps: true })
 ], PharmacyProfile);

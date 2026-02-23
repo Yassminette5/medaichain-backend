@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OcrResponseDto = exports.DeleteDocumentsDto = exports.UploadDocumentDto = void 0;
 const class_validator_1 = require("class-validator");
 class UploadDocumentDto {
+    userId;
 }
 exports.UploadDocumentDto = UploadDocumentDto;
 __decorate([
@@ -20,6 +21,7 @@ __decorate([
     __metadata("design:type", String)
 ], UploadDocumentDto.prototype, "userId", void 0);
 class DeleteDocumentsDto {
+    ids;
 }
 exports.DeleteDocumentsDto = DeleteDocumentsDto;
 __decorate([
@@ -28,6 +30,14 @@ __decorate([
     __metadata("design:type", Array)
 ], DeleteDocumentsDto.prototype, "ids", void 0);
 class OcrResponseDto {
+    id;
+    userId;
+    title;
+    image_name;
+    description;
+    extractedData;
+    createdAt;
+    updatedAt;
 }
 exports.OcrResponseDto = OcrResponseDto;
 //# sourceMappingURL=ocr.dto.js.map

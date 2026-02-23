@@ -8,7 +8,7 @@ export declare class PatientInformation {
     userId: Types.ObjectId;
     fullName: string;
     age: number;
-    gender: Gender;
+    gender?: Gender;
     allergies: string[];
     height: number;
     weight: number;
@@ -17,7 +17,7 @@ export declare const PatientInformationSchema: import("mongoose").Schema<Patient
     _id: Types.ObjectId;
 } & {
     __v: number;
-}, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, PatientInformation, Document<unknown, {}, import("mongoose").FlatRecord<PatientInformation>, {}, import("mongoose").ResolveSchemaOptions<import("mongoose").DefaultSchemaOptions>> & import("mongoose").FlatRecord<PatientInformation> & {
+}, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, PatientInformation, Document<unknown, {}, import("mongoose").FlatRecord<PatientInformation>, {}, import("mongoose").DefaultSchemaOptions> & import("mongoose").FlatRecord<PatientInformation> & {
     _id: Types.ObjectId;
 } & {
     __v: number;

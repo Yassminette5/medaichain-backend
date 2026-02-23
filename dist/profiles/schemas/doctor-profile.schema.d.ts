@@ -25,7 +25,7 @@ export declare const DoctorProfileSchema: import("mongoose").Schema<DoctorProfil
     _id: Types.ObjectId;
 } & {
     __v: number;
-}, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, DoctorProfile, Document<unknown, {}, import("mongoose").FlatRecord<DoctorProfile>, {}, import("mongoose").ResolveSchemaOptions<import("mongoose").DefaultSchemaOptions>> & import("mongoose").FlatRecord<DoctorProfile> & {
+}, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, DoctorProfile, Document<unknown, {}, import("mongoose").FlatRecord<DoctorProfile>, {}, import("mongoose").DefaultSchemaOptions> & import("mongoose").FlatRecord<DoctorProfile> & {
     _id: Types.ObjectId;
 } & {
     __v: number;

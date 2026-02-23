@@ -18,6 +18,13 @@ var Gender;
     Gender["FEMALE"] = "female";
 })(Gender || (exports.Gender = Gender = {}));
 let PatientInformation = class PatientInformation {
+    userId;
+    fullName;
+    age;
+    gender;
+    allergies;
+    height;
+    weight;
 };
 exports.PatientInformation = PatientInformation;
 __decorate([
@@ -33,7 +40,7 @@ __decorate([
     __metadata("design:type", Number)
 ], PatientInformation.prototype, "age", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ enum: Gender }),
+    (0, mongoose_1.Prop)({ type: String, enum: Gender, default: undefined }),
     __metadata("design:type", String)
 ], PatientInformation.prototype, "gender", void 0);
 __decorate([

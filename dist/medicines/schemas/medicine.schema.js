@@ -13,6 +13,18 @@ exports.MedicineSchema = exports.Medicine = void 0;
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 let Medicine = class Medicine {
+    userId;
+    name;
+    type;
+    dosage;
+    schedule;
+    duration;
+    frequency;
+    cause;
+    capSize;
+    instructions;
+    startDate;
+    isActive;
 };
 exports.Medicine = Medicine;
 __decorate([

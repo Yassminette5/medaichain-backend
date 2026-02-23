@@ -67,6 +67,7 @@ export class AuthService {
                     speciality: registerDto.speciality || '',
                     wilaya: registerDto.wilaya,
                     city: registerDto.wilaya, // Mapper wilaya vers city pour l'instant
+                    yearsOfExperience: registerDto.yearsOfExperience,
                 });
             } else if (registerDto.role === UserRole.CENTRE_ANALYSE) {
                 await this.profilesService.upsertLabProfile(user._id.toString(), {
@@ -79,7 +80,7 @@ export class AuthService {
             } else if (registerDto.role === UserRole.PHARMACIE) {
                 await this.profilesService.upsertPharmacyProfile(user._id.toString(), {
                     pharmacyName: registerDto.pharmacyName || '',
-                    ownerName: '',
+                    ownerName: registerDto.ownerName || '',
                     licenseNumber: registerDto.licenseNumber || '',
                     address: registerDto.address || '',
                     city: registerDto.delegation || '',
@@ -218,6 +219,44 @@ export class AuthService {
     async completeProfile(userId: string) {
         await this.usersService.markProfileCompleted(userId);
         return { message: 'Profil complété' };
+    }
+
+    // ========== CHANGER MOT DE PASSE ==========
+    async changePassword(userId: string, changePasswordDto: {
+        currentPassword: string;
+        newPassword: string;
+    }) {
+        const user = await this.usersService.findById(userId);
+
+        if (!user) {
+            throw new UnauthorizedException('Utilisateur non trouvé');
+        }
+
+        // Vérifier le mot de passe actuel
+        const isPasswordValid = await bcrypt.compare(
+            changePasswordDto.currentPassword,
+            user.password,
+        );
+
+        if (!isPasswordValid) {
+            throw new UnauthorizedException('Mot de passe actuel incorrect');
+        }
+
+        // Vérifier que le nouveau mot de passe est différent
+        if (changePasswordDto.currentPassword === changePasswordDto.newPassword) {
+            throw new BadRequestException(
+                'Le nouveau mot de passe doit être différent du mot de passe actuel',
+            );
+        }
+
+        // Hasher le nouveau mot de passe
+        const hashedPassword = await bcrypt.hash(changePasswordDto.newPassword, 10);
+
+        await this.usersService.update(userId, { password: hashedPassword });
+
+        return {
+            message: 'Mot de passe changé avec succès',
+        };
     }
 
     // ========== HELPERS ==========

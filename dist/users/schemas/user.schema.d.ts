@@ -4,10 +4,12 @@ export declare enum UserRole {
     MEDECIN = "medecin",
     PHARMACIE = "pharmacie",
     CENTRE_ANALYSE = "centre_analyse",
-    CLINIQUE = "clinique"
+    CLINIQUE = "clinique",
+    ADMIN = "admin"
 }
 export type UserDocument = User & Document;
 export declare class User {
+    fullName: string;
     email: string;
     password: string;
     phone: string;
@@ -15,6 +17,8 @@ export declare class User {
     isEmailVerified: boolean;
     isProfileCompleted: boolean;
     isActive: boolean;
+    avatar: string;
+    speciality: string;
     resetPasswordToken: string;
     resetPasswordExpires: Date;
     lastLoginAt: Date;
@@ -24,7 +28,7 @@ export declare const UserSchema: import("mongoose").Schema<User, import("mongoos
     _id: Types.ObjectId;
 } & {
     __v: number;
-}, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, User, Document<unknown, {}, import("mongoose").FlatRecord<User>, {}, import("mongoose").ResolveSchemaOptions<import("mongoose").DefaultSchemaOptions>> & import("mongoose").FlatRecord<User> & {
+}, any>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, User, Document<unknown, {}, import("mongoose").FlatRecord<User>, {}, import("mongoose").DefaultSchemaOptions> & import("mongoose").FlatRecord<User> & {
     _id: Types.ObjectId;
 } & {
     __v: number;

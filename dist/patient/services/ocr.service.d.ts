@@ -42,6 +42,6 @@ export declare class OcrService implements OnModuleInit {
     } & {
         __v: number;
     }>;
-    generatePDFFromOCRData(userId: string, res: Response): Promise<Response<any, Record<string, any>>>;
+    generatePDFFromOCRData(userId: string, res: Response): Promise<Response<any, Record<string, any>> | undefined>;
     deleteImages(ids: string[]): Promise<number>;
 }

@@ -19,10 +19,29 @@ var UserRole;
     UserRole["PHARMACIE"] = "pharmacie";
     UserRole["CENTRE_ANALYSE"] = "centre_analyse";
     UserRole["CLINIQUE"] = "clinique";
+    UserRole["ADMIN"] = "admin";
 })(UserRole || (exports.UserRole = UserRole = {}));
 let User = class User {
+    fullName;
+    email;
+    password;
+    phone;
+    role;
+    isEmailVerified;
+    isProfileCompleted;
+    isActive;
+    avatar;
+    speciality;
+    resetPasswordToken;
+    resetPasswordExpires;
+    lastLoginAt;
+    patientInformation;
 };
 exports.User = User;
+__decorate([
+    (0, mongoose_1.Prop)({ required: false }),
+    __metadata("design:type", String)
+], User.prototype, "fullName", void 0);
 __decorate([
     (0, mongoose_1.Prop)({ required: true, unique: true }),
     __metadata("design:type", String)
@@ -32,11 +51,11 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "password", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ required: true, unique: true }),
+    (0, mongoose_1.Prop)({ required: false }),
     __metadata("design:type", String)
 ], User.prototype, "phone", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ required: true, enum: UserRole }),
+    (0, mongoose_1.Prop)({ required: true, enum: UserRole, default: UserRole.PATIENT }),
     __metadata("design:type", String)
 ], User.prototype, "role", void 0);
 __decorate([
@@ -51,6 +70,14 @@ __decorate([
     (0, mongoose_1.Prop)({ default: true }),
     __metadata("design:type", Boolean)
 ], User.prototype, "isActive", void 0);
+__decorate([
+    (0, mongoose_1.Prop)(),
+    __metadata("design:type", String)
+], User.prototype, "avatar", void 0);
+__decorate([
+    (0, mongoose_1.Prop)(),
+    __metadata("design:type", String)
+], User.prototype, "speciality", void 0);
 __decorate([
     (0, mongoose_1.Prop)(),
     __metadata("design:type", String)

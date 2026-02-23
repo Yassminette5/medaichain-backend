@@ -13,6 +13,15 @@ exports.LabProfileSchema = exports.LabProfile = void 0;
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 let LabProfile = class LabProfile {
+    userId;
+    centreName;
+    categorie;
+    phone;
+    email;
+    localisation;
+    profilePhoto;
+    isVerified;
+    verifiedAt;
 };
 exports.LabProfile = LabProfile;
 __decorate([

@@ -19,6 +19,12 @@ export declare class User {
     resetPasswordToken: string;
     resetPasswordExpires: Date;
     lastLoginAt: Date;
+    fullName?: string;
+    gender?: string;
+    age?: number;
+    height?: number;
+    weight?: number;
+    allergies?: string[];
 }
 export declare const UserSchema: import("mongoose").Schema<User, import("mongoose").Model<User, any, any, any, Document<unknown, any, User, any, {}> & User & {
     _id: import("mongoose").Types.ObjectId;

@@ -49,6 +49,7 @@ export class AuthService {
             phone: registerDto.phone,
             role: registerDto.role,
             isProfileCompleted: false, // Sera mis à true après création du profil
+            fullName: registerDto.fullName, // Pour les patients
         });
 
         // Créer le profil associé
@@ -80,10 +81,24 @@ export class AuthService {
                     wilaya: registerDto.gouvernorat || '',
                 });
             } else if (registerDto.role === UserRole.PATIENT) {
+                // Pour les patients, on utilise fullName s'il est fourni
+                const names = registerDto.fullName?.split(' ') || [];
+                const firstName = registerDto.firstName || names[0] || '';
+                const lastName = registerDto.lastName || names.slice(1).join(' ') || '';
+                
                 await this.profilesService.upsertPatientProfile(user._id.toString(), {
-                    firstName: registerDto.firstName || '',
-                    lastName: registerDto.lastName || '',
+                    firstName,
+                    lastName,
+                    dateOfBirth: new Date(), // Valeur par défaut, sera mise à jour plus tard
                 });
+            } else if (registerDto.role === UserRole.CLINIQUE) {
+                await this.profilesService.upsertClinicProfile(user._id.toString(), {
+                    clinicName: registerDto.clinicName || '',
+                    address: registerDto.address || '',
+                    creationDate: registerDto.creationDate,
+                    phone: registerDto.phone,
+                    officialEmail: registerDto.email,
+                } as any);
             }
         } catch (error) {
             // En cas d'erreur de création de profil, on pourrait supprimer l'user ou juste loguer
@@ -266,7 +281,7 @@ export class AuthService {
                     centreName: dto.centreName || '',
                     categorie: dto.categorie || '',
                     phone: dto.phone,
-                    email: email, // Utiliser l'email passé en argument
+                    email: email,
                     localisation: dto.localisation || '',
                 });
             } else if (role === 'pharmacie') {
@@ -278,6 +293,14 @@ export class AuthService {
                     city: dto.delegation || '',
                     wilaya: dto.gouvernorat || '',
                 });
+            } else if (role === 'clinique') {
+                await this.profilesService.upsertClinicProfile(userId, {
+                    clinicName: dto.clinicName || '',
+                    address: dto.address || '',
+                    creationDate: dto.creationDate,
+                    phone: dto.phone,
+                    officialEmail: dto.officialEmail || email,
+                } as any);
             }
         } catch (error) {
             console.error('Erreur création profil:', error);
@@ -370,6 +393,14 @@ export class AuthService {
                     city: dto.delegation || '',
                     wilaya: dto.gouvernorat || '',
                 });
+            } else if (dto.role === UserRole.CLINIQUE) {
+                await this.profilesService.upsertClinicProfile(user._id.toString(), {
+                    clinicName: dto.clinicName || '',
+                    address: dto.address || '',
+                    creationDate: dto.creationDate,
+                    phone: dto.phone,
+                    officialEmail: dto.officialEmail || dto.email,
+                } as any);
             }
         } catch (error) {
             console.error('Erreur lors de la création du profil', error);
@@ -425,6 +456,12 @@ export class AuthService {
         return {
             ...result,
             id: result._id.toString(),
+            fullName: result.fullName,
+            gender: result.gender,
+            age: result.age,
+            height: result.height,
+            weight: result.weight,
+            allergies: result.allergies,
         };
     }
 }

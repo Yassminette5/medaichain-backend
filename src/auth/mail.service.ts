@@ -89,7 +89,7 @@ export class MailService {
       clinique: 'Clinique',
     };
     const roleLabel = roleLabels[role] || role;
-    const signupLink = `${this.configService.get('FRONTEND_URL') || 'http://localhost:3000'}/signup.html?token=${inviteToken}&role=${role}`;
+    const signupLink = `${this.configService.get('FRONTEND_URL') || 'http://localhost:3000'}/signup.html?token=${inviteToken}&role=${role}&email=${encodeURIComponent(email)}`;
 
     // Mode développement : afficher dans la console
     console.log('');

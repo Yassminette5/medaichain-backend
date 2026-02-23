@@ -43,6 +43,25 @@ export class User {
 
     @Prop()
     lastLoginAt: Date;
+
+    // Champs supplémentaires pour les patients (facilite l'accès sans jointure)
+    @Prop()
+    fullName?: string;
+
+    @Prop()
+    gender?: string;
+
+    @Prop()
+    age?: number;
+
+    @Prop()
+    height?: number;
+
+    @Prop()
+    weight?: number;
+
+    @Prop([String])
+    allergies?: string[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

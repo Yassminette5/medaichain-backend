@@ -5,7 +5,10 @@ export declare class ClinicProfile {
     clinicName: string;
     directorName: string;
     licenseNumber: string;
+    officialEmail: string;
+    phone: string;
     registrationNumber: string;
+    creationDate: Date;
     address: string;
     city: string;
     wilaya: string;

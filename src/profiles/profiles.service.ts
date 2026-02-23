@@ -161,4 +161,33 @@ export class ProfilesService {
 
         return this.labModel.find(query).exec();
     }
+
+    // ========== METTRE À JOUR INFORMATIONS PATIENT ==========
+    async updatePatientInformation(userId: string, data: {
+        fullName?: string;
+        gender: string;
+        age: number;
+        height: number;
+        weight: number;
+        allergies: string[];
+    }) {
+        // Mettre à jour les champs dans le document User pour un accès rapide
+        await this.usersService.update(userId, {
+            fullName: data.fullName,
+            gender: data.gender,
+            age: data.age,
+            height: data.height,
+            weight: data.weight,
+            allergies: data.allergies,
+            isProfileCompleted: true,
+        });
+
+        // Retourner l'utilisateur mis à jour
+        return this.usersService.findById(userId);
+    }
+
+    // ========== OBTENIR TOUS LES PATIENTS ==========
+    async getAllPatients(): Promise<PatientProfileDocument[]> {
+        return this.patientModel.find().populate('userId', 'email fullName phone').exec();
+    }
 }

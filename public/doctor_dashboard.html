@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docteur Dashboard - MEDAIChain</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="doctor_dashboard.css">
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="material-icons-round">medical_services</span>
+                <h2>MEDAIChain</h2>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-section="home">
+                    <span class="material-icons-round">dashboard</span>
+                    <span>Accueil</span>
+                </a>
+                <a href="#" class="nav-item" data-section="patients">
+                    <span class="material-icons-round">people</span>
+                    <span>Patients</span>
+                </a>
+                <a href="#" class="nav-item" data-section="agenda">
+                    <span class="material-icons-round">calendar_month</span>
+                    <span>Agenda</span>
+                </a>
+                <a href="#" class="nav-item" data-section="ai">
+                    <span class="material-icons-round">auto_awesome</span>
+                    <span>IA Support</span>
+                </a>
+                <a href="#" class="nav-item" data-section="profile">
+                    <span class="material-icons-round">person</span>
+                    <span>Mon Profil</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="logout-btn" id="logout-btn">
+                    <span class="material-icons-round">logout</span>
+                    <span>Déconnexion</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+
+            <!-- HOME SECTION -->
+            <section id="section-home" class="content-section active">
+                <div class="home-grid">
+                    <!-- Header Card -->
+                    <div class="header-card">
+                        <div class="header-info">
+                            <div class="dr-avatar" id="dr-initials">DR</div>
+                            <div class="dr-welcome">
+                                <p>Bonjour 👋</p>
+                                <h2 id="dr-name">Chargement...</h2>
+                            </div>
+                        </div>
+                        <div class="header-notif">
+                            <span class="material-icons-round">notifications</span>
+                            <div class="notif-dot" id="notif-count">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Grid -->
+                    <div class="stats-grid">
+                        <div class="stat-card highlight">
+                            <div class="stat-header">
+                                <div class="stat-icon-bg">
+                                    <span class="material-icons-round">people_alt</span>
+                                </div>
+                                <span class="material-icons-round">trending_up</span>
+                            </div>
+                            <div class="stat-value" id="stat-patients-today">0</div>
+                            <div class="stat-label">Patients du jour</div>
+                        </div>
+                        <div class="stat-card muted">
+                            <div class="stat-header">
+                                <div class="stat-icon-bg">
+                                    <span class="material-icons-round">pending_actions</span>
+                                </div>
+                            </div>
+                            <div class="stat-value" id="stat-pending">0</div>
+                            <div class="stat-label">En attente</div>
+                        </div>
+                        <div class="stat-card muted">
+                            <div class="stat-header">
+                                <div class="stat-icon-bg">
+                                    <span class="material-icons-round">warning</span>
+                                </div>
+                            </div>
+                            <div class="stat-value" id="stat-alerts" style="color: var(--error)">0</div>
+                            <div class="stat-label">Alertes critiques</div>
+                        </div>
+                        <div class="stat-card muted">
+                            <div class="stat-header">
+                                <div class="stat-icon-bg">
+                                    <span class="material-icons-round">event</span>
+                                </div>
+                            </div>
+                            <div class="stat-value" id="stat-total-events" style="color: var(--secondary)">0</div>
+                            <div class="stat-label">Total événements</div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="quick-actions">
+                        <div class="action-btn" id="btn-new-consult">
+                            <div class="action-icon primary">
+                                <span class="material-icons-round">add_circle_outline</span>
+                            </div>
+                            <span>Nouvelle<br>Consult.</span>
+                        </div>
+                        <div class="action-btn" id="btn-scan-doc">
+                            <div class="action-icon secondary">
+                                <span class="material-icons-round">document_scanner</span>
+                            </div>
+                            <span>Scanner<br>Document</span>
+                        </div>
+                        <div class="action-btn" id="btn-video-call">
+                            <div class="action-icon diagnosis">
+                                <span class="material-icons-round">video_call</span>
+                            </div>
+                            <span>Appel<br>Vidéo</span>
+                        </div>
+                        <div class="action-btn" id="btn-planify">
+                            <div class="action-icon prescription">
+                                <span class="material-icons-round">calendar_today</span>
+                            </div>
+                            <span>Planifier</span>
+                        </div>
+                    </div>
+
+                    <!-- Notifications / Alerts Section -->
+                    <div class="notifications-card">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <div class="title-icon warning">
+                                    <span class="material-icons-round">notifications_active</span>
+                                </div>
+                                <div>
+                                    <h3>Notifications</h3>
+                                    <p id="alert-summary" style="font-size: 11px; color: var(--text-secondary)">
+                                        Chargement...</p>
+                                </div>
+                            </div>
+                            <button class="status-tag"
+                                style="border: none; cursor: pointer; background: var(--warning-gradient);"
+                                id="btn-add-notif">+ Rappel</button>
+                        </div>
+                        <div id="alerts-list">
+                            <div class="loading">Chargement des notifications...</div>
+                        </div>
+                    </div>
+
+                    <!-- Today's Consultations -->
+                    <div class="card-section">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <div class="title-icon primary">
+                                    <span class="material-icons-round">calendar_today</span>
+                                </div>
+                                <h3>Consultations du jour</h3>
+                            </div>
+                        </div>
+                        <div class="consultations-list" id="consultations-today">
+                            <div class="loading">Chargement des consultations...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PATIENTS SECTION -->
+            <section id="section-patients" class="content-section">
+                <div class="search-bar">
+                    <span class="material-icons-round">search</span>
+                    <input type="text" id="patient-search" placeholder="Rechercher un patient...">
+                    <button class="header-notif"
+                        style="background: rgba(124, 58, 237, 0.1); color: var(--primary); width: 40px; height: 40px;">
+                        <span class="material-icons-round">filter_list</span>
+                    </button>
+                </div>
+                <div class="card-section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <div class="title-icon primary">
+                                <span class="material-icons-round">people</span>
+                            </div>
+                            <h3>Mes Patients</h3>
+                        </div>
+                        <button class="status-tag" style="border: none; cursor: pointer;">+ Ajouter</button>
+                    </div>
+                    <div class="patients-grid" id="patients-grid">
+                        <div class="loading">Chargement des patients...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- AGENDA SECTION -->
+            <section id="section-agenda" class="content-section">
+                <div class="card-section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <div class="title-icon primary">
+                                <span class="material-icons-round">event_note</span>
+                            </div>
+                            <h3>Tous les événements</h3>
+                        </div>
+                        <button class="status-tag" style="border: none; cursor: pointer;" id="btn-add-event">+
+                            Nouveau</button>
+                    </div>
+                    <div class="consultations-list" id="agenda-events-list">
+                        <div class="loading">Chargement des événements...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- AI SUPPORT SECTION -->
+            <section id="section-ai" class="content-section">
+                <div class="ai-disclaimer">
+                    <span class="material-icons-round">info</span>
+                    <p>Les suggestions IA sont à titre informatif uniquement. Toujours appliquer le jugement clinique.
+                    </p>
+                </div>
+                <div class="tabs-nav">
+                    <div class="tab-item active" data-tab="exams">
+                        <span class="material-icons-round">science</span>
+                        <span>Examens</span>
+                    </div>
+                    <div class="tab-item" data-tab="alerts">
+                        <span class="material-icons-round">warning_amber</span>
+                        <span>Alertes</span>
+                    </div>
+                    <div class="tab-item" data-tab="tips">
+                        <span class="material-icons-round">lightbulb</span>
+                        <span>Conseils</span>
+                    </div>
+                </div>
+                <div id="ai-content-area">
+                    <!-- AI suggestions list -->
+                    <div class="consultations-list" id="ai-suggestions-list">
+                        <!-- Items like exam cards or alerts -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- PROFILE SECTION -->
+            <section id="section-profile" class="content-section">
+                <div class="profile-hero">
+                    <div class="profile-avatar-large" id="profile-initials">DR</div>
+                    <div class="profile-info">
+                        <h1 id="profile-name">Chargement...</h1>
+                        <p id="profile-speciality">Spécialité</p>
+                    </div>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-card">
+                        <div class="info-icon-box">
+                            <span class="material-icons-round">workspace_premium</span>
+                        </div>
+                        <div class="info-details">
+                            <label>Expérience</label>
+                            <p id="profile-exp">-</p>
+                        </div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-icon-box">
+                            <span class="material-icons-round">location_on</span>
+                        </div>
+                        <div class="info-details">
+                            <label>Ville</label>
+                            <p id="profile-city">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-section" style="margin-top: 24px;">
+                    <div class="section-header">
+                        <h3>Informations professionnelles</h3>
+                    </div>
+                    <div class="consultations-list">
+                        <div class="notif-item">
+                            <div class="notif-icon-box"><span class="material-icons-round">email</span></div>
+                            <div class="notif-content">
+                                <h4>Email</h4>
+                                <p id="profile-email">-</p>
+                            </div>
+                        </div>
+                        <div class="notif-item">
+                            <div class="notif-icon-box"><span class="material-icons-round">phone</span></div>
+                            <div class="notif-content">
+                                <h4>Téléphone</h4>
+                                <p id="profile-phone">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Modal for New Consultation (Simplified) -->
+    <div id="consultation-modal" class="modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="card-section" style="width: 500px; max-width: 90%;">
+            <h3>Nouvelle Consultation</h3>
+            <p>Formulaire de consultation à implémenter.</p>
+            <button onclick="document.getElementById('consultation-modal').style.display='none'" class="logout-btn"
+                style="margin-top: 20px; background: var(--primary); color: white;">Fermer</button>
+        </div>
+    </div>
+
+    <script src="doctor_dashboard.js"></script>
+</body>
+
+</html>

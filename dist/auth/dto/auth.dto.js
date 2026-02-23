@@ -53,6 +53,12 @@ __decorate([
     __metadata("design:type", String)
 ], RegisterDto.prototype, "role", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Jean Dupont', required: false, description: 'Nom complet (pour patients)' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], RegisterDto.prototype, "fullName", void 0);
+__decorate([
     (0, swagger_1.ApiProperty)({ example: 'Jean', required: false }),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
@@ -141,6 +147,23 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "address", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Clinique Espoir', required: false }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], RegisterDto.prototype, "clinicName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '2023-01-01', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Date)
+], RegisterDto.prototype, "creationDate", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'contact@clinique.com', required: false }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], RegisterDto.prototype, "officialEmail", void 0);
 class LoginDto {
 }
 exports.LoginDto = LoginDto;
@@ -293,6 +316,20 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CompleteInviteDto.prototype, "delegation", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CompleteInviteDto.prototype, "clinicName", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Date)
+], CompleteInviteDto.prototype, "creationDate", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CompleteInviteDto.prototype, "officialEmail", void 0);
 class AdminCreateUserDto {
 }
 exports.AdminCreateUserDto = AdminCreateUserDto;
@@ -394,4 +431,21 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], AdminCreateUserDto.prototype, "address", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Clinique Espoir', required: false }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], AdminCreateUserDto.prototype, "clinicName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '2023-01-01', required: false }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Date)
+], AdminCreateUserDto.prototype, "creationDate", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'contact@clinique.com', required: false }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], AdminCreateUserDto.prototype, "officialEmail", void 0);
 //# sourceMappingURL=auth.dto.js.map

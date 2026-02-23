@@ -42,7 +42,13 @@ const roleConfig = {
     clinique: {
         label: 'Clinique',
         class: 'badge-clinique',
-        fields: []
+        fields: [
+            { label: 'Nom de la Clinique', name: 'clinicName', type: 'text', required: true },
+            { label: 'Date de création', name: 'creationDate', type: 'date', required: true },
+            { label: 'Email Officiel', name: 'officialEmail', type: 'email', required: true },
+            { label: 'Adresse', name: 'address', type: 'text', required: true }
+        ],
+        hideName: true
     }
 };
 
@@ -178,6 +184,11 @@ form.addEventListener('submit', async (e) => {
 
         alert("Inscription réussie ! Vous pouvez maintenant vous connecter sur l'application mobile ou le dashboard.");
         // Redirect or show success
+        if (role === 'clinique') {
+            window.location.href = 'clinique_dashboard.html';
+            return;
+        }
+
         document.body.innerHTML = `
             <div style="text-align:center; color: white;">
                 <h1>🎉 Inscription Réussie !</h1>

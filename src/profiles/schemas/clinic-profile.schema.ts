@@ -11,14 +11,23 @@ export class ClinicProfile {
     @Prop({ required: true })
     clinicName: string;
 
-    @Prop({ required: true })
+    @Prop()
     directorName: string;
 
-    @Prop({ required: true })
+    @Prop()
     licenseNumber: string; // Numéro d'agrément
 
     @Prop()
+    officialEmail: string;
+
+    @Prop()
+    phone: string;
+
+    @Prop()
     registrationNumber: string;
+
+    @Prop()
+    creationDate: Date;
 
     @Prop({ required: true })
     address: string;

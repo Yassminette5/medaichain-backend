@@ -31,7 +31,7 @@ let ProfilesController = class ProfilesController {
         return this.profilesService.upsertDoctorProfile(req.user.sub, data);
     }
     async updatePatientProfile(req, data) {
-        return this.profilesService.upsertPatientProfile(req.user.sub, data);
+        return this.profilesService.updatePatientInformation(req.user.sub, data);
     }
     async updatePharmacyProfile(req, data) {
         return this.profilesService.upsertPharmacyProfile(req.user.sub, data);
@@ -50,6 +50,9 @@ let ProfilesController = class ProfilesController {
     }
     async searchLabs(localisation, categorie) {
         return this.profilesService.searchLabs({ localisation, categorie });
+    }
+    async getAllPatients() {
+        return this.profilesService.getAllPatients();
     }
 };
 exports.ProfilesController = ProfilesController;
@@ -80,7 +83,7 @@ __decorate([
     (0, roles_decorator_1.Roles)(user_schema_1.UserRole.PATIENT),
     (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.Put)('patient'),
-    (0, swagger_1.ApiOperation)({ summary: 'Créer/Mettre à jour mon profil patient' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Mettre à jour les informations patient (genre, âge, taille, poids, allergies)' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -162,6 +165,16 @@ __decorate([
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], ProfilesController.prototype, "searchLabs", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(user_schema_1.UserRole.MEDECIN),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, common_1.Get)('patients'),
+    (0, swagger_1.ApiOperation)({ summary: 'Obtenir tous les patients (pour médecins)' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ProfilesController.prototype, "getAllPatients", null);
 exports.ProfilesController = ProfilesController = __decorate([
     (0, swagger_1.ApiTags)('Profils'),
     (0, common_1.Controller)('profiles'),

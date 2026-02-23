@@ -8,6 +8,7 @@ export declare class RegisterDto {
     password: string;
     phone: string;
     role: UserRole;
+    fullName?: string;
     firstName?: string;
     lastName?: string;
     speciality?: string;
@@ -23,6 +24,9 @@ export declare class RegisterDto {
     gouvernorat?: string;
     delegation?: string;
     address?: string;
+    clinicName?: string;
+    creationDate?: Date;
+    officialEmail?: string;
 }
 export declare class LoginDto {
     email: string;
@@ -60,6 +64,9 @@ export declare class CompleteInviteDto {
     address?: string;
     gouvernorat?: string;
     delegation?: string;
+    clinicName?: string;
+    creationDate?: Date;
+    officialEmail?: string;
 }
 export declare class AdminCreateUserDto {
     email: string;
@@ -79,4 +86,7 @@ export declare class AdminCreateUserDto {
     gouvernorat?: string;
     delegation?: string;
     address?: string;
+    clinicName?: string;
+    creationDate?: Date;
+    officialEmail?: string;
 }

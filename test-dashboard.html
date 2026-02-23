@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Dashboard API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .success { background: #d4edda; }
+        .error { background: #f8d7da; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Dashboard API</h1>
+    
+    <div class="section">
+        <h2>1. Token</h2>
+        <p>Token: <span id="token-status">Vérification...</span></p>
+        <button onclick="checkToken()">Vérifier Token</button>
+    </div>
+
+    <div class="section">
+        <h2>2. Profil Médecin</h2>
+        <button onclick="testProfile()">Charger Profil</button>
+        <pre id="profile-result"></pre>
+    </div>
+
+    <div class="section">
+        <h2>3. Patients</h2>
+        <button onclick="testPatients()">Charger Patients</button>
+        <pre id="patients-result"></pre>
+    </div>
+
+    <div class="section">
+        <h2>4. Consultations</h2>
+        <button onclick="testConsultations()">Charger Consultations</button>
+        <pre id="consultations-result"></pre>
+    </div>
+
+    <div class="section">
+        <h2>5. Notifications</h2>
+        <button onclick="testNotifications()">Charger Notifications</button>
+        <pre id="notifications-result"></pre>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        const token = localStorage.getItem('token');
+
+        function checkToken() {
+            const status = document.getElementById('token-status');
+            if (token) {
+                status.textContent = 'Token trouvé: ' + token.substring(0, 20) + '...';
+                status.style.color = 'green';
+            } else {
+                status.textContent = 'Aucun token trouvé. Connectez-vous d\'abord.';
+                status.style.color = 'red';
+            }
+        }
+
+        async function apiCall(endpoint) {
+            const response = await fetch(`${API_BASE}${endpoint}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            return await response.json();
+        }
+
+        async function testProfile() {
+            try {
+                const user = await apiCall('/auth/me');
+                const profile = await apiCall('/profiles/me');
+                document.getElementById('profile-result').textContent = 
+                    JSON.stringify({ user, profile }, null, 2);
+            } catch (error) {
+                document.getElementById('profile-result').textContent = 
+                    'Erreur: ' + error.message;
+            }
+        }
+
+        async function testPatients() {
+            try {
+                const patients = await apiCall('/profiles/patients');
+                document.getElementById('patients-result').textContent = 
+                    `${patients.length} patients trouvés:\n\n` + 
+                    JSON.stringify(patients, null, 2);
+            } catch (error) {
+                document.getElementById('patients-result').textContent = 
+                    'Erreur: ' + error.message;
+            }
+        }
+
+        async function testConsultations() {
+            try {
+                const consultations = await apiCall('/appointments');
+                document.getElementById('consultations-result').textContent = 
+                    `${consultations.length} consultations trouvées:\n\n` + 
+                    JSON.stringify(consultations, null, 2);
+            } catch (error) {
+                document.getElementById('consultations-result').textContent = 
+                    'Erreur: ' + error.message;
+            }
+        }
+
+        async function testNotifications() {
+            try {
+                const notifications = await apiCall('/notifications');
+                document.getElementById('notifications-result').textContent = 
+                    `${notifications.length} notifications trouvées:\n\n` + 
+                    JSON.stringify(notifications, null, 2);
+            } catch (error) {
+                document.getElementById('notifications-result').textContent = 
+                    'Erreur: ' + error.message;
+            }
+        }
+
+        // Auto-check token on load
+        checkToken();
+    </script>
+</body>
+</html>

@@ -36,4 +36,13 @@ export declare class ProfilesService {
         categorie?: string;
         analysisType?: string;
     }): Promise<LabProfileDocument[]>;
+    updatePatientInformation(userId: string, data: {
+        fullName?: string;
+        gender: string;
+        age: number;
+        height: number;
+        weight: number;
+        allergies: string[];
+    }): Promise<import("../users/schemas/user.schema").UserDocument>;
+    getAllPatients(): Promise<PatientProfileDocument[]>;
 }

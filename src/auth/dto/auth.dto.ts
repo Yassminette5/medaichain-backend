@@ -43,6 +43,11 @@ export class RegisterDto {
     role: UserRole;
 
     // Champs optionnels pour Médecin / Patient
+    @ApiProperty({ example: 'Jean Dupont', required: false, description: 'Nom complet (pour patients)' })
+    @IsString()
+    @IsOptional()
+    fullName?: string;
+
     @ApiProperty({ example: 'Jean', required: false })
     @IsString()
     @IsOptional()
@@ -118,6 +123,21 @@ export class RegisterDto {
     @IsString()
     @IsOptional()
     address?: string;
+
+    // Champs pour Clinique
+    @ApiProperty({ example: 'Clinique Espoir', required: false })
+    @IsString()
+    @IsOptional()
+    clinicName?: string;
+
+    @ApiProperty({ example: '2023-01-01', required: false })
+    @IsOptional()
+    creationDate?: Date;
+
+    @ApiProperty({ example: 'contact@clinique.com', required: false })
+    @IsString()
+    @IsOptional()
+    officialEmail?: string;
 }
 
 export class LoginDto {
@@ -205,6 +225,9 @@ export class CompleteInviteDto {
     @IsOptional() @IsString() address?: string;
     @IsOptional() @IsString() gouvernorat?: string;
     @IsOptional() @IsString() delegation?: string;
+    @IsOptional() @IsString() clinicName?: string;
+    @IsOptional() creationDate?: Date;
+    @IsOptional() @IsString() officialEmail?: string;
 }
 
 export class AdminCreateUserDto {
@@ -287,5 +310,19 @@ export class AdminCreateUserDto {
     @IsString()
     @IsOptional()
     address?: string;
+
+    @ApiProperty({ example: 'Clinique Espoir', required: false })
+    @IsString()
+    @IsOptional()
+    clinicName?: string;
+
+    @ApiProperty({ example: '2023-01-01', required: false })
+    @IsOptional()
+    creationDate?: Date;
+
+    @ApiProperty({ example: 'contact@clinique.com', required: false })
+    @IsString()
+    @IsOptional()
+    officialEmail?: string;
 }
 

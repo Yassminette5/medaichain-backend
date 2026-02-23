@@ -43,6 +43,7 @@ let AuthService = class AuthService {
             phone: registerDto.phone,
             role: registerDto.role,
             isProfileCompleted: false,
+            fullName: registerDto.fullName,
         });
         try {
             if (registerDto.role === user_schema_1.UserRole.MEDECIN) {
@@ -75,9 +76,22 @@ let AuthService = class AuthService {
                 });
             }
             else if (registerDto.role === user_schema_1.UserRole.PATIENT) {
+                const names = registerDto.fullName?.split(' ') || [];
+                const firstName = registerDto.firstName || names[0] || '';
+                const lastName = registerDto.lastName || names.slice(1).join(' ') || '';
                 await this.profilesService.upsertPatientProfile(user._id.toString(), {
-                    firstName: registerDto.firstName || '',
-                    lastName: registerDto.lastName || '',
+                    firstName,
+                    lastName,
+                    dateOfBirth: new Date(),
+                });
+            }
+            else if (registerDto.role === user_schema_1.UserRole.CLINIQUE) {
+                await this.profilesService.upsertClinicProfile(user._id.toString(), {
+                    clinicName: registerDto.clinicName || '',
+                    address: registerDto.address || '',
+                    creationDate: registerDto.creationDate,
+                    phone: registerDto.phone,
+                    officialEmail: registerDto.email,
                 });
             }
         }
@@ -227,6 +241,15 @@ let AuthService = class AuthService {
                     wilaya: dto.gouvernorat || '',
                 });
             }
+            else if (role === 'clinique') {
+                await this.profilesService.upsertClinicProfile(userId, {
+                    clinicName: dto.clinicName || '',
+                    address: dto.address || '',
+                    creationDate: dto.creationDate,
+                    phone: dto.phone,
+                    officialEmail: dto.officialEmail || email,
+                });
+            }
         }
         catch (error) {
             console.error('Erreur création profil:', error);
@@ -299,6 +322,15 @@ let AuthService = class AuthService {
                     wilaya: dto.gouvernorat || '',
                 });
             }
+            else if (dto.role === user_schema_1.UserRole.CLINIQUE) {
+                await this.profilesService.upsertClinicProfile(user._id.toString(), {
+                    clinicName: dto.clinicName || '',
+                    address: dto.address || '',
+                    creationDate: dto.creationDate,
+                    phone: dto.phone,
+                    officialEmail: dto.officialEmail || dto.email,
+                });
+            }
         }
         catch (error) {
             console.error('Erreur lors de la création du profil', error);
@@ -345,6 +377,12 @@ let AuthService = class AuthService {
         return {
             ...result,
             id: result._id.toString(),
+            fullName: result.fullName,
+            gender: result.gender,
+            age: result.age,
+            height: result.height,
+            weight: result.weight,
+            allergies: result.allergies,
         };
     }
 };

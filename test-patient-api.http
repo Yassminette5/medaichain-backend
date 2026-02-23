@@ -1,0 +1,101 @@
+### Test API Patient - MEDAIChain Backend
+### Utilisez ce fichier avec l'extension REST Client de VS Code
+
+@baseUrl = http://localhost:3000
+@accessToken = YOUR_ACCESS_TOKEN_HERE
+
+### 1. Inscription d'un nouveau patient
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "patient.test@medaichain.com",
+  "password": "Password123!",
+  "phone": "+213555999888",
+  "role": "patient",
+  "fullName": "Ahmed Benali"
+}
+
+### 2. Connexion
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "patient.test@medaichain.com",
+  "password": "Password123!"
+}
+
+### 3. Obtenir le profil utilisateur (nécessite un token)
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{accessToken}}
+
+### 4. Mettre à jour les informations patient
+PUT {{baseUrl}}/profiles/patient
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Ahmed Benali",
+  "gender": "homme",
+  "age": 28,
+  "height": 178,
+  "weight": 75,
+  "allergies": ["Pénicilline", "Pollen"]
+}
+
+### 5. Obtenir le profil patient détaillé
+GET {{baseUrl}}/profiles/me
+Authorization: Bearer {{accessToken}}
+
+### 6. Compléter le profil
+POST {{baseUrl}}/auth/complete-profile
+Authorization: Bearer {{accessToken}}
+
+### 7. Mot de passe oublié
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "patient.test@medaichain.com"
+}
+
+### 8. Réinitialiser le mot de passe (avec le code reçu par email)
+POST {{baseUrl}}/auth/reset-password
+Content-Type: application/json
+
+{
+  "token": "123456",
+  "newPassword": "NewPassword123!"
+}
+
+### 9. Rafraîchir le token
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "YOUR_REFRESH_TOKEN_HERE"
+}
+
+### 10. Test avec fullName vide (devrait fonctionner)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "patient2.test@medaichain.com",
+  "password": "Password123!",
+  "phone": "+213555888777",
+  "role": "patient"
+}
+
+### 11. Test de mise à jour partielle du profil
+PUT {{baseUrl}}/profiles/patient
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "gender": "femme",
+  "age": 25,
+  "height": 165,
+  "weight": 60,
+  "allergies": []
+}

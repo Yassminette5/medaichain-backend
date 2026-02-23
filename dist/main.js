@@ -13,7 +13,8 @@ async function bootstrap() {
     app.useGlobalPipes(new common_1.ValidationPipe({
         whitelist: true,
         transform: true,
-        forbidNonWhitelisted: true,
+        forbidNonWhitelisted: false,
+        skipMissingProperties: false,
     }));
     const config = new swagger_1.DocumentBuilder()
         .setTitle('MEDAIChain API')

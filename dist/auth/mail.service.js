@@ -92,7 +92,7 @@ let MailService = class MailService {
             clinique: 'Clinique',
         };
         const roleLabel = roleLabels[role] || role;
-        const signupLink = `${this.configService.get('FRONTEND_URL') || 'http://localhost:3000'}/signup.html?token=${inviteToken}&role=${role}`;
+        const signupLink = `${this.configService.get('FRONTEND_URL') || 'http://localhost:3000'}/signup.html?token=${inviteToken}&role=${role}&email=${encodeURIComponent(email)}`;
         console.log('');
         console.log('='.repeat(60));
         console.log('📩 INVITATION PROFESSIONNELLE');

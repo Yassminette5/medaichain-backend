@@ -113,8 +113,25 @@
                 if (!response.ok) throw new Error(data.message || 'Échec de la connexion');
 
                 // Store token
-                localStorage.setItem('admin_token', data.accessToken);
-                window.location.href = '/';
+                const role = data.user.role;
+                localStorage.setItem('token', data.accessToken);
+                localStorage.setItem('role', role);
+
+                // Compatibility with admin dashboard
+                if (role === 'admin') {
+                    localStorage.setItem('admin_token', data.accessToken);
+                }
+
+                // Redirect based on role
+                if (role === 'admin') {
+                    window.location.href = '/';
+                } else if (role === 'medecin') {
+                    window.location.href = '/doctor_dashboard.html';
+                } else if (role === 'clinique') {
+                    window.location.href = '/clinique_dashboard.html';
+                } else {
+                    window.location.href = '/';
+                }
 
             } catch (error) {
                 errorDiv.textContent = error.message;

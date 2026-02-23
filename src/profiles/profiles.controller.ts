@@ -45,9 +45,16 @@ export class ProfilesController {
     @Roles(UserRole.PATIENT)
     @ApiBearerAuth()
     @Put('patient')
-    @ApiOperation({ summary: 'Créer/Mettre à jour mon profil patient' })
-    async updatePatientProfile(@Request() req, @Body() data: any) {
-        return this.profilesService.upsertPatientProfile(req.user.sub, data);
+    @ApiOperation({ summary: 'Mettre à jour les informations patient (genre, âge, taille, poids, allergies)' })
+    async updatePatientProfile(@Request() req, @Body() data: {
+        fullName?: string;
+        gender: string;
+        age: number;
+        height: number;
+        weight: number;
+        allergies: string[];
+    }) {
+        return this.profilesService.updatePatientInformation(req.user.sub, data);
     }
 
     // ========== PROFIL PHARMACIE ==========
@@ -118,5 +125,15 @@ export class ProfilesController {
         @Query('categorie') categorie?: string,
     ) {
         return this.profilesService.searchLabs({ localisation, categorie });
+    }
+
+    // ========== OBTENIR TOUS LES PATIENTS (POUR MÉDECINS) ==========
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.MEDECIN)
+    @ApiBearerAuth()
+    @Get('patients')
+    @ApiOperation({ summary: 'Obtenir tous les patients (pour médecins)' })
+    async getAllPatients() {
+        return this.profilesService.getAllPatients();
     }
 }

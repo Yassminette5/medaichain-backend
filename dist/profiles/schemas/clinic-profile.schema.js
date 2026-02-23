@@ -24,17 +24,29 @@ __decorate([
     __metadata("design:type", String)
 ], ClinicProfile.prototype, "clinicName", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ required: true }),
+    (0, mongoose_1.Prop)(),
     __metadata("design:type", String)
 ], ClinicProfile.prototype, "directorName", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ required: true }),
+    (0, mongoose_1.Prop)(),
     __metadata("design:type", String)
 ], ClinicProfile.prototype, "licenseNumber", void 0);
 __decorate([
     (0, mongoose_1.Prop)(),
     __metadata("design:type", String)
+], ClinicProfile.prototype, "officialEmail", void 0);
+__decorate([
+    (0, mongoose_1.Prop)(),
+    __metadata("design:type", String)
+], ClinicProfile.prototype, "phone", void 0);
+__decorate([
+    (0, mongoose_1.Prop)(),
+    __metadata("design:type", String)
 ], ClinicProfile.prototype, "registrationNumber", void 0);
+__decorate([
+    (0, mongoose_1.Prop)(),
+    __metadata("design:type", Date)
+], ClinicProfile.prototype, "creationDate", void 0);
 __decorate([
     (0, mongoose_1.Prop)({ required: true }),
     __metadata("design:type", String)

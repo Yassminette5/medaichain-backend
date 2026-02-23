@@ -109,6 +109,21 @@ let ProfilesService = class ProfilesService {
             query.categorie = new RegExp(filters.categorie, 'i');
         return this.labModel.find(query).exec();
     }
+    async updatePatientInformation(userId, data) {
+        await this.usersService.update(userId, {
+            fullName: data.fullName,
+            gender: data.gender,
+            age: data.age,
+            height: data.height,
+            weight: data.weight,
+            allergies: data.allergies,
+            isProfileCompleted: true,
+        });
+        return this.usersService.findById(userId);
+    }
+    async getAllPatients() {
+        return this.patientModel.find().populate('userId', 'email fullName phone').exec();
+    }
 };
 exports.ProfilesService = ProfilesService;
 exports.ProfilesService = ProfilesService = __decorate([

@@ -21,6 +21,9 @@ import { PharmacyModule } from './pharmacy/pharmacy.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { NotificationModule } from './notifications/notification.module';
 
+// Lab module (Centre d'analyse)
+import { LabModule } from './lab/lab.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
@@ -49,6 +52,7 @@ import { NotificationModule } from './notifications/notification.module';
     PharmacyModule,
     DeliveryModule,
     NotificationModule,
+    LabModule,
   ],
   controllers: [AppController],
   providers: [AppService],

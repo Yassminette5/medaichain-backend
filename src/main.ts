@@ -15,8 +15,13 @@ async function bootstrap() {
   });
 
   // Serve static files (uploaded images - from fedibenman)
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads/',
+  });
+
+  // Serve static files from public directory (CSS, JS, etc.)
+  app.useStaticAssets(join(process.cwd(), 'public'), {
+    prefix: '/',
   });
 
   // Global validation pipe
@@ -42,6 +47,6 @@ async function bootstrap() {
   await app.listen(port);
   console.log(`🚀 MEDAIChain API running on http://localhost:${port}`);
   console.log(`📚 Swagger docs: http://localhost:${port}/api`);
-  console.log(`📁 Uploads folder: ${join(__dirname, '..', 'uploads')}`);
+  console.log(`📁 Uploads folder: ${join(process.cwd(), 'uploads')}`);
 }
 bootstrap();

@@ -15,6 +15,7 @@ import { UsersModule } from './users/users.module';
 import { ProfilesModule } from './profiles/profiles.module';
 import { PatientModule } from './patient/patient.module';
 import { MedicinesModule } from './medicines/medicines.module';
+import { AppointmentsModule } from './appointments/appointments.module';
 
 // Fedibenman modules (Pharmacie, Delivery, Notifications)
 import { PharmacyModule } from './pharmacy/pharmacy.module';
@@ -49,6 +50,7 @@ import { LabModule } from './lab/lab.module';
     ProfilesModule,
     PatientModule,
     MedicinesModule,
+    AppointmentsModule,
     PharmacyModule,
     DeliveryModule,
     NotificationModule,

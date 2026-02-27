@@ -59,6 +59,16 @@ export class ProfilesController {
         return this.authService.getProfile(req.user.userId);
     }
 
+    // ========== TOUS LES PATIENTS ==========
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.MEDECIN)
+    @ApiBearerAuth()
+    @Get('patients')
+    @ApiOperation({ summary: 'Obtenir la liste de tous les patients pour le médecin' })
+    async getAllPatients() {
+        return this.profilesService.getAllPatients();
+    }
+
     // ========== PROFIL PHARMACIE ==========
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(UserRole.PHARMACIE)

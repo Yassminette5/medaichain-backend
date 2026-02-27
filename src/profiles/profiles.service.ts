@@ -209,4 +209,13 @@ export class ProfilesService {
 
         return this.labModel.find(query).exec();
     }
+
+    // ========== GET TOUS LES PATIENTS ==========
+    async getAllPatients(): Promise<any[]> {
+        return this.patientModel
+            .find()
+            .populate('userId', 'phone email')
+            .lean()
+            .exec();
+    }
 }

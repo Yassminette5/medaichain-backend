@@ -25,6 +25,9 @@ export class PatientInformation {
     @Prop([String])
     allergies: string[];
 
+    @Prop([String])
+    chronicDiseases: string[];
+
     @Prop()
     height: number; // en cm
 

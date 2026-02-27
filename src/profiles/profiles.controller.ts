@@ -1,23 +1,34 @@
 import {
     Controller,
     Get,
-    Post,
     Put,
     Body,
-    Param,
     Query,
     UseGuards,
     Request,
     Inject,
     forwardRef,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiBearerAuth,
+    ApiQuery,
+    ApiResponse,
+} from '@nestjs/swagger';
 import { ProfilesService } from './profiles.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../users/schemas/user.schema';
 import { AuthService } from '../auth/auth.service';
+import {
+    UpdateDoctorProfileDto,
+    UpdateLabProfileDto,
+    UpdatePharmacyProfileDto,
+    UpdateClinicProfileDto,
+    UpdatePatientProfileDto,
+} from './dto/update-profile.dto';
 
 @ApiTags('Profils')
 @Controller('profiles')
@@ -28,78 +39,190 @@ export class ProfilesController {
         private readonly authService: AuthService,
     ) { }
 
-    // ========== MON PROFIL ==========
+    // ================================================================
+    // GET /profiles/me  — Profil complet (user + données métier)
+    // ================================================================
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @Get('me')
-    @ApiOperation({ summary: 'Obtenir mon profil selon mon rôle' })
+    @ApiOperation({
+        summary: 'Obtenir mon profil complet (coordonnées + infos métier)',
+        description:
+            'Retourne toutes les informations de l\'utilisateur connecté : ' +
+            'email, téléphone, rôle, et toutes les données spécifiques à son profil ' +
+            '(médecin, centre d\'analyse, pharmacie, clinique ou patient).',
+    })
+    @ApiResponse({ status: 200, description: 'Profil complet retourné' })
+    @ApiResponse({ status: 401, description: 'Non authentifié' })
     async getMyProfile(@Request() req) {
+        // Retourne le profil fusionné (user + profil métier) via AuthService
+        return this.authService.getProfile(req.user.userId);
+    }
+
+    // ================================================================
+    // GET /profiles/me/raw  — Données brutes du profil métier uniquement
+    // ================================================================
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @Get('me/raw')
+    @ApiOperation({
+        summary: 'Obtenir les données brutes du profil métier',
+        description:
+            'Retourne uniquement les données du profil métier (sans infos user) ' +
+            'pour pré-remplir un formulaire de modification.',
+    })
+    @ApiResponse({ status: 200, description: 'Données brutes du profil' })
+    async getMyRawProfile(@Request() req) {
         return this.profilesService.getProfile(req.user.userId, req.user.role);
     }
 
-    // ========== PROFIL MÉDECIN ==========
+    // ================================================================
+    // PUT /profiles/doctor  — Modifier profil médecin
+    // ================================================================
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(UserRole.MEDECIN)
     @ApiBearerAuth()
     @Put('doctor')
-    @ApiOperation({ summary: 'Créer/Mettre à jour mon profil médecin' })
-    async updateDoctorProfile(@Request() req, @Body() data: any) {
-        await this.profilesService.upsertDoctorProfile(req.user.userId, data);
+    @ApiOperation({
+        summary: 'Modifier mon profil médecin',
+        description:
+            'Met à jour les coordonnées et informations professionnelles du médecin. ' +
+            'Tous les champs sont optionnels (seuls ceux envoyés seront mis à jour).',
+    })
+    @ApiResponse({ status: 200, description: 'Profil mis à jour avec succès' })
+    @ApiResponse({ status: 401, description: 'Non authentifié' })
+    @ApiResponse({ status: 403, description: 'Rôle médecin requis' })
+    async updateDoctorProfile(
+        @Request() req,
+        @Body() dto: UpdateDoctorProfileDto,
+    ) {
+        await this.profilesService.upsertDoctorProfile(req.user.userId, dto);
         return this.authService.getProfile(req.user.userId);
     }
 
-    // ========== PROFIL PATIENT ==========
+    // ================================================================
+    // PUT /profiles/patient  — Modifier profil patient
+    // ================================================================
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(UserRole.PATIENT)
     @ApiBearerAuth()
     @Put('patient')
-    @ApiOperation({ summary: 'Créer/Mettre à jour mon profil patient' })
-    async updatePatientInformation(@Request() req, @Body() data: any) {
-        await this.profilesService.upsertPatientInformation(req.user.userId, data);
+    @ApiOperation({
+        summary: 'Modifier mon profil patient',
+        description:
+            'Met à jour les informations médicales du patient : nom, âge, genre, ' +
+            'allergies, taille et poids.',
+    })
+    @ApiResponse({ status: 200, description: 'Profil patient mis à jour' })
+    @ApiResponse({ status: 403, description: 'Rôle patient requis' })
+    async updatePatientProfile(
+        @Request() req,
+        @Body() dto: UpdatePatientProfileDto,
+    ) {
+        await this.profilesService.upsertPatientInformation(req.user.userId, dto);
         return this.authService.getProfile(req.user.userId);
     }
 
-    // ========== PROFIL PHARMACIE ==========
+    // ================================================================
+    // PUT /profiles/pharmacy  — Modifier profil pharmacie
+    // ================================================================
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(UserRole.PHARMACIE)
     @ApiBearerAuth()
     @Put('pharmacy')
-    @ApiOperation({ summary: 'Créer/Mettre à jour mon profil pharmacie' })
-    async updatePharmacyProfile(@Request() req, @Body() data: any) {
-        try {
-            return await this.profilesService.upsertPharmacyProfile(req.user.userId, data);
-        } catch (error) {
-            console.error('Pharmacy profile update error:', error);
-            throw error;
-        }
+    @ApiOperation({
+        summary: 'Modifier mon profil pharmacie',
+        description:
+            'Met à jour les informations de la pharmacie : nom, adresse, horaires, ' +
+            'services, coordonnées GPS et préférences de livraison.',
+    })
+    @ApiResponse({ status: 200, description: 'Profil pharmacie mis à jour' })
+    @ApiResponse({ status: 403, description: 'Rôle pharmacie requis' })
+    async updatePharmacyProfile(
+        @Request() req,
+        @Body() dto: UpdatePharmacyProfileDto,
+    ) {
+        await this.profilesService.upsertPharmacyProfile(req.user.userId, dto);
+        return this.authService.getProfile(req.user.userId);
     }
 
-    // ========== PROFIL LAB ==========
+    // ================================================================
+    // PUT /profiles/lab  — Modifier profil centre d'analyse
+    // ================================================================
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(UserRole.CENTRE_ANALYSE)
     @ApiBearerAuth()
     @Put('lab')
-    @ApiOperation({ summary: 'Créer/Mettre à jour mon profil laboratoire' })
-    async updateLabProfile(@Request() req, @Body() data: any) {
-        return this.profilesService.upsertLabProfile(req.user.userId, data);
+    @ApiOperation({
+        summary: 'Modifier mon profil centre d\'analyse',
+        description:
+            'Met à jour les informations du centre : nom, catégories d\'analyses, ' +
+            'localisation, téléphone, isActive et horaires d\'ouverture. ' +
+            'Accepte aussi les alias frontend: name/centre_name, location, categories, telephone/tel, mail, is_active.',
+    })
+    @ApiResponse({ status: 200, description: 'Profil centre d\'analyse mis à jour' })
+    @ApiResponse({ status: 403, description: 'Rôle centre_analyse requis' })
+    async updateLabProfile(
+        @Request() req,
+        @Body() dto: UpdateLabProfileDto,
+    ) {
+        // Normaliser les alias envoyés par le frontend
+        const normalized: any = { ...dto };
+        if (dto.name && !dto.centreName) normalized.centreName = dto.name;
+        if (dto.centre_name && !dto.centreName) normalized.centreName = dto.centre_name;
+        if (dto.location && !dto.localisation) normalized.localisation = dto.location;
+        if (dto.categories !== undefined && dto.categorie === undefined) {
+            normalized.categorie = Array.isArray(dto.categories)
+                ? dto.categories
+                : String(dto.categories).split(',').map((c: string) => c.trim()).filter(Boolean);
+        }
+        if (typeof normalized.categorie === 'string') {
+            normalized.categorie = normalized.categorie.split(',').map((c: string) => c.trim()).filter(Boolean);
+        }
+        if (dto.telephone && !dto.phone) normalized.phone = dto.telephone;
+        if (dto.tel && !dto.phone) normalized.phone = dto.tel;
+        if (dto.mail && !dto.email) normalized.email = dto.mail;
+        if (dto.is_active !== undefined && dto.isActive === undefined) normalized.isActive = dto.is_active;
+        // Supprimer les alias
+        delete normalized.name; delete normalized.centre_name; delete normalized.location;
+        delete normalized.categories; delete normalized.telephone; delete normalized.tel;
+        delete normalized.mail; delete normalized.is_active;
+
+        await this.profilesService.upsertLabProfile(req.user.userId, normalized);
+        return this.authService.getProfile(req.user.userId);
     }
 
-    // ========== PROFIL CLINIQUE ==========
+    // ================================================================
+    // PUT /profiles/clinic  — Modifier profil clinique
+    // ================================================================
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Put('clinic')
-    @ApiOperation({ summary: 'Créer/Mettre à jour mon profil clinique' })
-    async updateClinicProfile(@Request() req, @Body() data: any) {
-        return this.profilesService.upsertClinicProfile(req.user.userId, data);
+    @ApiOperation({
+        summary: 'Modifier mon profil clinique',
+        description:
+            'Met à jour les informations de la clinique : nom, adresse, spécialités, ' +
+            'services, capacité, horaires et assurances acceptées.',
+    })
+    @ApiResponse({ status: 200, description: 'Profil clinique mis à jour' })
+    @ApiResponse({ status: 403, description: 'Rôle clinique requis' })
+    async updateClinicProfile(
+        @Request() req,
+        @Body() dto: UpdateClinicProfileDto,
+    ) {
+        await this.profilesService.upsertClinicProfile(req.user.userId, dto);
+        return this.authService.getProfile(req.user.userId);
     }
 
-    // ========== RECHERCHE PUBLIQUE ==========
+    // ================================================================
+    // RECHERCHE PUBLIQUE
+    // ================================================================
     @Get('doctors/search')
-    @ApiOperation({ summary: 'Rechercher des médecins' })
-    @ApiQuery({ name: 'speciality', required: false })
-    @ApiQuery({ name: 'city', required: false })
-    @ApiQuery({ name: 'wilaya', required: false })
+    @ApiOperation({ summary: 'Rechercher des médecins (public)' })
+    @ApiQuery({ name: 'speciality', required: false, description: 'Spécialité médicale' })
+    @ApiQuery({ name: 'city', required: false, description: 'Ville' })
+    @ApiQuery({ name: 'wilaya', required: false, description: 'Wilaya / Gouvernorat' })
     async searchDoctors(
         @Query('speciality') speciality?: string,
         @Query('city') city?: string,
@@ -109,7 +232,7 @@ export class ProfilesController {
     }
 
     @Get('pharmacies/search')
-    @ApiOperation({ summary: 'Rechercher des pharmacies' })
+    @ApiOperation({ summary: 'Rechercher des pharmacies (public)' })
     @ApiQuery({ name: 'city', required: false })
     @ApiQuery({ name: 'wilaya', required: false })
     @ApiQuery({ name: 'is24Hours', required: false })
@@ -124,7 +247,7 @@ export class ProfilesController {
     }
 
     @Get('labs/search')
-    @ApiOperation({ summary: 'Rechercher des laboratoires / centres d\'analyse' })
+    @ApiOperation({ summary: 'Rechercher des centres d\'analyse (public)' })
     @ApiQuery({ name: 'localisation', required: false })
     @ApiQuery({ name: 'categorie', required: false })
     async searchLabs(

@@ -5,7 +5,7 @@ import { ProfilesController } from './profiles.controller';
 import { DoctorProfile, DoctorProfileSchema } from './schemas/doctor-profile.schema';
 import { PatientInformation, PatientInformationSchema } from './schemas/patient_information.schema';
 import { PharmacyProfile, PharmacyProfileSchema } from './schemas/pharmacy-profile.schema';
-import { LabProfile, LabProfileSchema } from './schemas/lab-profile.schema';
+import { LabProfile, LabProfileSchema } from '../lab/schemas/lab-profile.schema';
 import { ClinicProfile, ClinicProfileSchema } from './schemas/clinic-profile.schema';
 import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';

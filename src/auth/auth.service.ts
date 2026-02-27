@@ -74,7 +74,7 @@ export class AuthService {
             } else if (registerDto.role === UserRole.CENTRE_ANALYSE) {
                 await this.profilesService.upsertLabProfile(user._id.toString(), {
                     centreName: registerDto.centreName || '',
-                    categorie: registerDto.categorie || '',
+                    categorie: registerDto.categorie ? (typeof registerDto.categorie === 'string' ? [registerDto.categorie] : registerDto.categorie) : [],
                     phone: registerDto.phone,
                     email: registerDto.email,
                     localisation: registerDto.localisation || '',
@@ -353,13 +353,21 @@ export class AuthService {
         await this.createProfileForRole(user._id.toString(), role, dto, email);
         console.log(`[RegisterFromInvite] Profil créé/mis à jour.`);
 
-        return this.generateTokens(user);
+        // Récupérer l'utilisateur à jour avec profil fusionné
+        const updatedUser = await this.usersService.findById(user._id.toString());
+        const tokens = await this.generateTokens(updatedUser);
+
+        return {
+            message: 'Inscription réussie ! Vous pouvez maintenant vous connecter.',
+            user: await this.sanitizeUser(updatedUser),
+            ...tokens,
+        };
     }
 
     private async createProfileForRole(userId: string, role: string, dto: any, email: string) {
         try {
             if (role === 'medecin') {
-                const fullName = dto.firstName && dto.lastName 
+                const fullName = dto.firstName && dto.lastName
                     ? `${dto.firstName} ${dto.lastName}`.trim()
                     : (dto.firstName || dto.lastName || '');
                 await this.profilesService.upsertDoctorProfile(userId, {
@@ -372,7 +380,7 @@ export class AuthService {
             } else if (role === 'centre_analyse') {
                 await this.profilesService.upsertLabProfile(userId, {
                     centreName: dto.centreName || '',
-                    categorie: dto.categorie || '',
+                    categorie: dto.categorie ? (typeof dto.categorie === 'string' ? [dto.categorie] : dto.categorie) : [],
                     phone: dto.phone,
                     email: email,
                     localisation: dto.localisation || '',
@@ -435,7 +443,7 @@ export class AuthService {
         // Créer le profil associé selon le rôle
         try {
             if (dto.role === UserRole.MEDECIN) {
-                const fullName = dto.firstName && dto.lastName 
+                const fullName = dto.firstName && dto.lastName
                     ? `${dto.firstName} ${dto.lastName}`.trim()
                     : (dto.firstName || dto.lastName || '');
                 await this.profilesService.upsertDoctorProfile(user._id.toString(), {
@@ -448,7 +456,7 @@ export class AuthService {
             } else if (dto.role === UserRole.CENTRE_ANALYSE) {
                 await this.profilesService.upsertLabProfile(user._id.toString(), {
                     centreName: dto.centreName || '',
-                    categorie: dto.categorie || '',
+                    categorie: dto.categorie ? (typeof dto.categorie === 'string' ? [dto.categorie] : dto.categorie) : [],
                     phone: dto.phone,
                     email: dto.email,
                     localisation: dto.localisation || '',
@@ -536,6 +544,20 @@ export class AuthService {
                     mergedUser.speciality = pData.speciality;
                     mergedUser.hospital = pData.hospital;
                     mergedUser.licenseNumber = pData.licenseNumber;
+                } else if (roleLower === UserRole.CENTRE_ANALYSE.toString()) {
+                    mergedUser.centreName = pData.centreName;
+                    mergedUser.categorie = pData.categorie;
+                    mergedUser.phone = pData.phone || mergedUser.phone;
+                    mergedUser.email = pData.email || mergedUser.email;
+                    mergedUser.localisation = pData.localisation;
+                } else if (roleLower === UserRole.PHARMACIE.toString()) {
+                    mergedUser.pharmacyName = pData.pharmacyName;
+                    mergedUser.ownerName = pData.ownerName;
+                    mergedUser.address = pData.address;
+                } else if (roleLower === UserRole.CLINIQUE.toString()) {
+                    mergedUser.clinicName = pData.clinicName;
+                    mergedUser.address = pData.address;
+                    mergedUser.phone = pData.phone || mergedUser.phone;
                 }
                 // Add other roles as needed
             } else {

@@ -23,6 +23,9 @@ import {
     CompleteInviteDto,
 } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RolesGuard } from './guards/roles.guard';
+import { Roles } from './decorators/roles.decorator';
+import { UserRole } from '../users/schemas/user.schema';
 
 @ApiTags('Authentification')
 @Controller('auth')
@@ -118,10 +121,15 @@ export class AuthController {
         return this.authService.sendInvitation(inviteDto);
     }
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
+    @ApiBearerAuth()
     @Post('admin/invite')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Envoyer une invitation (Dashboard Admin)' })
     @ApiResponse({ status: 200, description: 'Invitation envoyée' })
+    @ApiResponse({ status: 401, description: 'Non autorisé' })
+    @ApiResponse({ status: 403, description: 'Accès refusé (admin uniquement)' })
     async adminInvite(@Body() inviteDto: InviteDto) {
         return this.authService.sendInvitation(inviteDto);
     }
@@ -140,11 +148,16 @@ export class AuthController {
         return this.authService.registerFromInvite(dto, email, role);
     }
 
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
+    @ApiBearerAuth()
     @Post('admin/create-user')
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Créer un compte utilisateur par l\'admin' })
     @ApiResponse({ status: 201, description: 'Compte créé et identifiants envoyés par email' })
     @ApiResponse({ status: 400, description: 'Rôle patient non autorisé' })
+    @ApiResponse({ status: 401, description: 'Non autorisé' })
+    @ApiResponse({ status: 403, description: 'Accès refusé (admin uniquement)' })
     @ApiResponse({ status: 409, description: 'Email ou téléphone déjà utilisé' })
     async adminCreateUser(@Body() dto: AdminCreateUserDto) {
         return this.authService.createUserByAdmin(dto);

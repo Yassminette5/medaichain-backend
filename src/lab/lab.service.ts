@@ -43,13 +43,61 @@ export class LabService {
         return lab;
     }
 
+    // ========== NORMALISER LES CHAMPS FRONTEND ==========
+    private normalizeLabData(data: any): Partial<LabProfile> {
+        const normalized: any = { ...data };
+
+        // Alias: name / centre_name → centreName
+        if (data.name && !data.centreName) normalized.centreName = data.name;
+        if (data.centre_name && !data.centreName) normalized.centreName = data.centre_name;
+        delete normalized.name;
+        delete normalized.centre_name;
+
+        // Alias: location → localisation
+        if (data.location && !data.localisation) normalized.localisation = data.location;
+        delete normalized.location;
+
+        // Alias: categories → categorie (toujours un tableau)
+        if (data.categories !== undefined && data.categorie === undefined) {
+            normalized.categorie = Array.isArray(data.categories)
+                ? data.categories
+                : typeof data.categories === 'string'
+                    ? data.categories.split(',').map((c: string) => c.trim()).filter(Boolean)
+                    : [];
+        }
+        // Normaliser categorie si string unique
+        if (typeof normalized.categorie === 'string') {
+            normalized.categorie = normalized.categorie.split(',').map((c: string) => c.trim()).filter(Boolean);
+        }
+        delete normalized.categories;
+
+        // Alias: telephone / tel → phone
+        if (data.telephone && !data.phone) normalized.phone = data.telephone;
+        if (data.tel && !data.phone) normalized.phone = data.tel;
+        delete normalized.telephone;
+        delete normalized.tel;
+
+        // Alias: mail → email
+        if (data.mail && !data.email) normalized.email = data.mail;
+        delete normalized.mail;
+
+        // Alias: is_active → isActive
+        if (data.is_active !== undefined && data.isActive === undefined) normalized.isActive = data.is_active;
+        delete normalized.is_active;
+
+        return normalized;
+    }
+
     // ========== CRÉER/METTRE À JOUR PROFIL LAB ==========
-    async upsertLabProfile(userId: string, data: Partial<LabProfile>): Promise<LabProfileDocument> {
+    async upsertLabProfile(userId: string, data: Partial<LabProfile> | any): Promise<LabProfileDocument> {
         const objectId = new Types.ObjectId(userId);
+
+        // Normaliser les noms de champs envoyés par le frontend
+        const normalizedData = this.normalizeLabData(data);
 
         const profile = await this.labModel.findOneAndUpdate(
             { userId: objectId },
-            { ...data, userId: objectId },
+            { ...normalizedData, userId: objectId },
             { upsert: true, new: true }
         ).exec();
 

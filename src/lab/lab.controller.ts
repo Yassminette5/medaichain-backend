@@ -65,7 +65,7 @@ export class LabController {
         description: 'Endpoint GET pour récupérer les informations complètes du profil du centre d\'analyse connecté. Retourne toutes les données du profil : centreName, categorie, phone, email, localisation, profilePhoto, isVerified, isActive, etc. Si le profil n\'existe pas encore, retourne null.'
     })
     async getLabProfile(@Request() req) {
-        return this.labService.getLabProfile(req.user.sub);
+        return this.labService.getLabProfile(req.user.userId);
     }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
@@ -74,10 +74,10 @@ export class LabController {
     @Put('profile')
     @ApiOperation({ 
         summary: 'Créer/Mettre à jour mon profil laboratoire / centre d\'analyse',
-        description: 'Endpoint PUT pour créer ou mettre à jour le profil du centre d\'analyse. Permet de définir ou modifier : centreName (nom du centre), categorie (liste des catégories d\'analyse), phone, email, localisation, profilePhoto, isActive, openingHours (horaires d\'ouverture). Les horaires d\'ouverture doivent être au format : { "lundi": { "open": "08:00", "close": "18:00", "isOpen": true }, "mardi": { ... }, ... }. Si le profil existe, il sera mis à jour. Sinon, un nouveau profil sera créé.'
+        description: 'Endpoint PUT pour créer ou mettre à jour le profil du centre d\'analyse. Permet de définir ou modifier : centreName (nom du centre), categorie (liste des catégories d\'analyse), phone, email, localisation, profilePhoto, isActive, openingHours. Accepte aussi les alias: categories, location, centre_name, telephone, tel, mail, is_active.'
     })
     async updateLabProfile(@Request() req, @Body() data: any) {
-        return this.labService.upsertLabProfile(req.user.sub, data);
+        return this.labService.upsertLabProfile(req.user.userId, data);
     }
 
     // ========== UPLOAD PHOTO DE PROFIL ==========
@@ -126,7 +126,7 @@ export class LabController {
         }
 
         const profilePhotoPath = `/uploads/lab-profiles/${file.filename}`;
-        const updatedProfile = await this.labService.updateProfilePhoto(req.user.sub, profilePhotoPath);
+        const updatedProfile = await this.labService.updateProfilePhoto(req.user.userId, profilePhotoPath);
 
         return {
             message: 'Photo de profil uploadée avec succès',
@@ -145,7 +145,7 @@ export class LabController {
         description: 'Endpoint GET pour récupérer la liste complète des catégories d\'analyse du centre d\'analyse connecté. Retourne un tableau des catégories (ex: ["Biologie", "Radiologie", "Imagerie", "Sang", "Scanner", etc.]).'
     })
     async getLabCategories(@Request() req) {
-        const categories = await this.labService.getLabCategories(req.user.sub);
+        const categories = await this.labService.getLabCategories(req.user.userId);
         return { categories };
     }
 
@@ -158,7 +158,7 @@ export class LabController {
         description: 'Endpoint POST pour ajouter des catégories d\'analyse au centre. Le body doit contenir un champ "categories" qui peut être une chaîne unique ou un tableau de chaînes. Exemple: { "categories": "Biologie" } ou { "categories": ["Biologie", "Radiologie"] }. Les catégories déjà existantes ne seront pas dupliquées.'
     })
     async addLabCategories(@Request() req, @Body() body: { categories: string | string[] }) {
-        return this.labService.addLabCategories(req.user.sub, body.categories);
+        return this.labService.addLabCategories(req.user.userId, body.categories);
     }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
@@ -167,10 +167,10 @@ export class LabController {
     @Post('categories/remove')
     @ApiOperation({ 
         summary: 'Supprimer une ou plusieurs catégories du laboratoire',
-        description: 'Endpoint POST pour supprimer des catégories d\'analyse du centre. Le body doit contenir un champ "categories" qui peut être une chaîne unique ou un tableau de chaînes. Exemple: { "categories": "Biologie" } ou { "categories": ["Biologie", "Radiologie"] }. Seules les catégories existantes seront supprimées.'
+        description: 'Endpoint POST pour supprimer des catégories d\'analyse du centre.'
     })
     async removeLabCategories(@Request() req, @Body() body: { categories: string | string[] }) {
-        return this.labService.removeLabCategories(req.user.sub, body.categories);
+        return this.labService.removeLabCategories(req.user.userId, body.categories);
     }
 
     // ========== GESTION DES RÉSULTATS D'ANALYSE ==========
@@ -245,7 +245,7 @@ export class LabController {
             throw new BadRequestException('Aucun fichier fourni');
         }
 
-        const labProfile = await this.labService.getLabProfile(req.user.sub);
+        const labProfile = await this.labService.getLabProfile(req.user.userId);
         if (!labProfile || !labProfile._id) {
             throw new NotFoundException('Profil laboratoire non trouvé');
         }
@@ -278,7 +278,7 @@ export class LabController {
         description: 'Endpoint GET pour récupérer tous les résultats d\'analyse uploadés par le centre d\'analyse connecté. Les résultats sont triés par date d\'analyse (plus récent en premier).',
     })
     async getMyAnalysisResults(@Request() req) {
-        const labProfile = await this.labService.getLabProfile(req.user.sub);
+        const labProfile = await this.labService.getLabProfile(req.user.userId);
         if (!labProfile || !labProfile._id) {
             return [];
         }
@@ -295,7 +295,7 @@ export class LabController {
         description: 'Endpoint GET pour rechercher les résultats d\'analyse d\'un patient spécifique par son email.',
     })
     async searchResultsByPatient(@Request() req, @Query('patientEmail') patientEmail?: string) {
-        const labProfile = await this.labService.getLabProfile(req.user.sub);
+        const labProfile = await this.labService.getLabProfile(req.user.userId);
         if (!labProfile || !labProfile._id) {
             return [];
         }
@@ -316,7 +316,7 @@ export class LabController {
         description: 'Endpoint GET pour récupérer les détails d\'un résultat d\'analyse spécifique par son ID.',
     })
     async getAnalysisResultById(@Request() req, @Param('id') id: string) {
-        const labProfile = await this.labService.getLabProfile(req.user.sub);
+        const labProfile = await this.labService.getLabProfile(req.user.userId);
         if (!labProfile || !labProfile._id) {
             throw new NotFoundException('Profil laboratoire non trouvé');
         }
@@ -332,7 +332,7 @@ export class LabController {
         description: 'Endpoint POST pour supprimer un résultat d\'analyse par son ID.',
     })
     async deleteAnalysisResult(@Request() req, @Param('id') id: string) {
-        const labProfile = await this.labService.getLabProfile(req.user.sub);
+        const labProfile = await this.labService.getLabProfile(req.user.userId);
         if (!labProfile || !labProfile._id) {
             throw new NotFoundException('Profil laboratoire non trouvé');
         }

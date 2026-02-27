@@ -4,7 +4,7 @@ import { Model, Types } from 'mongoose';
 import { DoctorProfile, DoctorProfileDocument } from './schemas/doctor-profile.schema';
 import { PatientInformation, PatientInformationDocument } from './schemas/patient_information.schema';
 import { PharmacyProfile, PharmacyProfileDocument } from './schemas/pharmacy-profile.schema';
-import { LabProfile, LabProfileDocument } from './schemas/lab-profile.schema';
+import { LabProfile, LabProfileDocument } from '../lab/schemas/lab-profile.schema';
 import { ClinicProfile, ClinicProfileDocument } from './schemas/clinic-profile.schema';
 import { UsersService } from '../users/users.service';
 import { UserRole } from '../users/schemas/user.schema';
@@ -39,9 +39,11 @@ export class ProfilesService {
                 return this.labModel.findOne({ userId: objectId }).exec();
             case UserRole.CLINIQUE.toString():
                 return this.clinicModel.findOne({ userId: objectId }).exec();
+            case UserRole.ADMIN.toString():
+                return null; // Pas de profil spécifique pour l'admin
             default:
                 console.warn(`[ProfilesService] Role match failed for: ${roleLower}`);
-                throw new BadRequestException('Rôle invalide');
+                return null;
         }
     }
 
@@ -125,9 +127,17 @@ export class ProfilesService {
         }
         const objectId = new Types.ObjectId(userId);
 
+        // Gérer la catégorie si elle est envoyée sous forme de chaîne (séparée par des virgules ou unique)
+        let categorie = data.categorie;
+        if (typeof categorie === 'string' && (categorie as string).trim() !== '') {
+            categorie = (categorie as string).split(',').map(c => c.trim()).filter(c => c !== '');
+        } else if (typeof categorie === 'string') {
+            categorie = [];
+        }
+
         const profile = await this.labModel.findOneAndUpdate(
             { userId: objectId },
-            { ...data, userId: objectId },
+            { ...data, categorie, userId: objectId },
             { upsert: true, new: true }
         ).exec();
 

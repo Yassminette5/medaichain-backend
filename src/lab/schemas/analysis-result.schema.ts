@@ -25,7 +25,7 @@ export class AnalysisResult {
     analysisDate: Date; // Date de l'analyse
 
     @Prop({ required: true })
-    resultFile: string; // Chemin du fichier de résultat (PDF, JPG, PNG, DOC, DOCX)
+    resultFile: string; // Chemin du fichier de résultat (PDF uniquement)
 
     @Prop()
     notes?: string; // Notes optionnelles

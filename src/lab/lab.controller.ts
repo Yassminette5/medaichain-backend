@@ -189,20 +189,12 @@ export class LabController {
                 },
             }),
             fileFilter: (req, file, cb) => {
-                // Accepter PDF, JPG, PNG, DOC, DOCX
-                const allowedMimes = [
-                    'application/pdf',
-                    'image/jpeg',
-                    'image/jpg',
-                    'image/png',
-                    'application/msword',
-                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                ];
-                if (allowedMimes.includes(file.mimetype)) {
+                // Accepter uniquement PDF
+                if (file.mimetype === 'application/pdf') {
                     cb(null, true);
                 } else {
                     cb(
-                        new BadRequestException('Format de fichier non autorisé. Formats acceptés: PDF, JPG, PNG, DOC, DOCX'),
+                        new BadRequestException('Format de fichier non autorisé. Seul le format PDF est accepté.'),
                         false,
                     );
                 }
@@ -210,8 +202,8 @@ export class LabController {
         }),
     )
     @ApiOperation({
-        summary: 'Uploader un résultat d\'analyse',
-        description: 'Endpoint POST pour uploader un résultat d\'analyse. Le formulaire doit contenir: patientName, patientEmail, analysisType, analysisDate, file (fichier), et optionnellement notes et analysisTypeOther. Formats acceptés: PDF, JPG, PNG, DOC, DOCX.',
+        summary: 'Uploader un résultat d\'analyse (PDF uniquement)',
+        description: 'Endpoint POST pour uploader un résultat d\'analyse. Le formulaire doit contenir: patientName, patientEmail, analysisType, analysisDate, file (PDF uniquement), et optionnellement notes et analysisTypeOther. Seul le format PDF est accepté.',
     })
     @ApiConsumes('multipart/form-data')
     @ApiBody({
@@ -224,7 +216,7 @@ export class LabController {
                 analysisType: { type: 'string', enum: Object.values(AnalysisType), description: 'Type d\'analyse' },
                 analysisTypeOther: { type: 'string', description: 'Type d\'analyse si analysisType = AUTRE' },
                 analysisDate: { type: 'string', format: 'date', description: 'Date de l\'analyse (YYYY-MM-DD)' },
-                file: { type: 'string', format: 'binary', description: 'Fichier de résultat (PDF, JPG, PNG, DOC, DOCX)' },
+                file: { type: 'string', format: 'binary', description: 'Fichier de résultat (PDF uniquement)' },
                 notes: { type: 'string', description: 'Notes optionnelles' },
             },
         },

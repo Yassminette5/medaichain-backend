@@ -28,6 +28,9 @@ import { LabModule } from './lab/lab.module';
 // Lab Appointments (Rendez-vous patient → centre d'analyse)
 import { LabAppointmentsModule } from './lab-appointments/lab-appointments.module';
 
+// Prescriptions (Médecin → Patient)
+import { PrescriptionsModule } from './prescriptions/prescriptions.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
@@ -59,6 +62,7 @@ import { LabAppointmentsModule } from './lab-appointments/lab-appointments.modul
     NotificationModule,
     LabModule,
     LabAppointmentsModule,
+    PrescriptionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

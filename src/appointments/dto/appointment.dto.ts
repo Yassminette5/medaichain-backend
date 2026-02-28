@@ -1,35 +1,58 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsEnum } from 'class-validator';
+
+export enum EventType {
+    CONSULTATION = 'consultation',
+    OPERATION = 'operation',
+    NOTE = 'note',
+}
+
+export enum AlertOption {
+    NONE = 'none',
+    MIN_5 = 'min5',
+    MIN_15 = 'min15',
+    MIN_30 = 'min30',
+    HOUR_1 = 'hour1',
+    DAY_1 = 'day1',
+}
 
 export class CreateAppointmentDto {
-    @ApiProperty()
+    @ApiProperty({ description: 'Titre de l\'événement' })
     @IsString()
     title: string;
 
-    @ApiPropertyOptional()
+    @ApiPropertyOptional({ description: 'Description / notes' })
     @IsOptional()
     @IsString()
     description?: string;
 
-    @ApiProperty()
+    @ApiProperty({ description: 'Date et heure de début (ISO 8601)' })
     @IsDateString()
     dateTime: string;
 
-    @ApiPropertyOptional()
+    @ApiPropertyOptional({ description: 'Date et heure de fin (ISO 8601)' })
     @IsOptional()
     @IsDateString()
     endTime?: string;
 
-    @ApiProperty()
-    @IsString()
-    type: string;
+    @ApiProperty({
+        enum: EventType,
+        description: 'Type d\'événement: consultation, operation, note',
+        example: EventType.CONSULTATION,
+    })
+    @IsEnum(EventType)
+    type: EventType;
 
-    @ApiPropertyOptional()
+    @ApiPropertyOptional({
+        enum: AlertOption,
+        description: 'Alerte avant l\'événement',
+        example: AlertOption.MIN_15,
+    })
     @IsOptional()
-    @IsString()
-    alertBefore?: string;
+    @IsEnum(AlertOption)
+    alertBefore?: AlertOption;
 
-    @ApiPropertyOptional()
+    @ApiPropertyOptional({ description: 'Nom du patient' })
     @IsOptional()
     @IsString()
     patientName?: string;
@@ -40,7 +63,7 @@ export class UpdateAppointmentDto {
     @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
     @ApiPropertyOptional() @IsOptional() @IsDateString() dateTime?: string;
     @ApiPropertyOptional() @IsOptional() @IsDateString() endTime?: string;
-    @ApiPropertyOptional() @IsOptional() @IsString() type?: string;
-    @ApiPropertyOptional() @IsOptional() @IsString() alertBefore?: string;
+    @ApiPropertyOptional({ enum: EventType }) @IsOptional() @IsEnum(EventType) type?: EventType;
+    @ApiPropertyOptional({ enum: AlertOption }) @IsOptional() @IsEnum(AlertOption) alertBefore?: AlertOption;
     @ApiPropertyOptional() @IsOptional() @IsString() patientName?: string;
 }

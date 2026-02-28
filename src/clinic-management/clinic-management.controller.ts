@@ -2,48 +2,130 @@ import {
     Controller, Get, Post, Put, Delete,
     Body, Param, Query, UseGuards, Request,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { ClinicManagementService } from './clinic-management.service';
+import { ProfilesService } from '../profiles/profiles.service';
+import { AuthService } from '../auth/auth.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '../users/schemas/user.schema';
 import { CreateClinicDto, UpdateClinicDto } from './dto/clinic.dto';
 import { AddDoctorToClinicDto, UpdateClinicDoctorDto } from './dto/clinic-doctor.dto';
 import { CreateAppointmentDto, UpdateAppointmentDto } from './dto/appointment.dto';
 import { CreateAdmissionDto, UpdateAdmissionDto } from './dto/admission.dto';
 import { CreateMedicalRecordDto, UpdateMedicalRecordDto } from './dto/medical-record.dto';
 import { CreateInvoiceDto, UpdateInvoiceDto } from './dto/invoice.dto';
+import { UpdateClinicProfileDto } from './dto/clinic-profile.dto';
 
 @ApiTags('Gestion Clinique')
 @Controller('clinic-management')
 export class ClinicManagementController {
-    constructor(private readonly service: ClinicManagementService) { }
+    constructor(
+        private readonly service: ClinicManagementService,
+        private readonly profilesService: ProfilesService,
+        private readonly authService: AuthService,
+    ) { }
 
     // ==========================================
-    //              CLINIC
+    //      PROFIL CLINIQUE (après invitation admin)
     // ==========================================
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
-    @Post('clinic')
-    @ApiOperation({ summary: 'Créer une clinique' })
-    async createClinic(@Request() req, @Body() dto: CreateClinicDto) {
-        return this.service.createClinic(req.user.sub, dto);
+    @Get('profile')
+    @ApiOperation({
+        summary: 'Obtenir mon profil clinique complet',
+        description:
+            'Retourne le profil complet de la clinique connectée (coordonnées, spécialités, services, etc.). ' +
+            'Utilisé pour pré-remplir le formulaire de modification.',
+    })
+    async getMyProfile(@Request() req) {
+        return this.authService.getProfile(req.user.userId);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
+    @ApiBearerAuth()
+    @Get('profile/raw')
+    @ApiOperation({
+        summary: 'Obtenir les données brutes du profil clinique (pour formulaire)',
+        description: 'Retourne uniquement les données du profil métier pour pré-remplir un formulaire.',
+    })
+    async getMyRawProfile(@Request() req) {
+        return this.profilesService.getProfile(req.user.userId, UserRole.CLINIQUE);
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
+    @ApiBearerAuth()
+    @Put('profile')
+    @ApiOperation({
+        summary: 'Créer / Mettre à jour mon profil clinique',
+        description:
+            'Crée ou met à jour le profil de la clinique connectée. ' +
+            'Tous les champs sont optionnels (seuls ceux envoyés seront mis à jour). ' +
+            'Champs principaux : clinicName, directorName, licenseNumber, address, city, wilaya, ' +
+            'specialities, services, bedCount, hasEmergency, hasAmbulance, insuranceAccepted, ' +
+            'workingDays, openingTime, closingTime.',
+    })
+    @ApiBody({
+        schema: {
+            example: {
+                clinicName: 'Clinique El Afia',
+                directorName: 'Dr. Ahmed Benali',
+                licenseNumber: 'AGR-2025-001',
+                address: '12 Rue Didouche Mourad, Alger',
+                city: 'Alger',
+                wilaya: 'Alger',
+                specialities: ['Cardiologie', 'Chirurgie'],
+                services: ['Urgences', 'Radiologie'],
+                bedCount: 50,
+                hasEmergency: true,
+                hasAmbulance: true,
+                insuranceAccepted: ['CNAS', 'CASNOS'],
+                workingDays: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'],
+                openingTime: '08:00',
+                closingTime: '17:00',
+            },
+        },
+    })
+    async updateMyProfile(@Request() req, @Body() dto: UpdateClinicProfileDto) {
+        await this.profilesService.upsertClinicProfile(req.user.userId, dto);
+        return this.authService.getProfile(req.user.userId);
+    }
+
+    // ==========================================
+    //              CLINIC CRUD
+    // ==========================================
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
+    @ApiBearerAuth()
+    @Post('clinic')
+    @ApiOperation({ summary: 'Créer une clinique (gestion interne)' })
+    async createClinic(@Request() req, @Body() dto: CreateClinicDto) {
+        return this.service.createClinic(req.user.userId, dto);
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Get('clinic/mine')
-    @ApiOperation({ summary: 'Obtenir ma clinique' })
+    @ApiOperation({ summary: 'Obtenir ma clinique (gestion interne)' })
     async getMyClinic(@Request() req) {
-        return this.service.getClinicByOwner(req.user.sub);
+        return this.service.getClinicByOwner(req.user.userId);
     }
 
     @Get('clinic/:id')
-    @ApiOperation({ summary: 'Obtenir une clinique par ID' })
+    @ApiOperation({ summary: 'Obtenir une clinique par ID (public)' })
     async getClinicById(@Param('id') id: string) {
         return this.service.getClinicById(id);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Put('clinic/:id')
     @ApiOperation({ summary: 'Mettre à jour une clinique' })
@@ -51,7 +133,8 @@ export class ClinicManagementController {
         return this.service.updateClinic(id, dto);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Delete('clinic/:id')
     @ApiOperation({ summary: 'Supprimer une clinique' })
@@ -71,7 +154,8 @@ export class ClinicManagementController {
         return this.service.getAvailableDoctors();
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Post('clinic/:clinicId/doctors')
     @ApiOperation({ summary: 'Ajouter un médecin à la clinique' })
@@ -87,7 +171,8 @@ export class ClinicManagementController {
         return this.service.getDoctorsByClinic(clinicId);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Put('doctors/:clinicDoctorId')
     @ApiOperation({ summary: 'Modifier un médecin dans la clinique' })
@@ -95,7 +180,8 @@ export class ClinicManagementController {
         return this.service.updateClinicDoctor(id, dto);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Delete('doctors/:clinicDoctorId')
     @ApiOperation({ summary: 'Retirer un médecin de la clinique' })
@@ -107,7 +193,8 @@ export class ClinicManagementController {
     //         APPOINTMENTS (Rendez-vous)
     // ==========================================
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Post('clinic/:clinicId/appointments')
     @ApiOperation({ summary: 'Créer un rendez-vous' })
@@ -139,7 +226,8 @@ export class ClinicManagementController {
         return this.service.getAppointmentById(id);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Put('appointments/:id')
     @ApiOperation({ summary: 'Modifier un rendez-vous' })
@@ -147,7 +235,8 @@ export class ClinicManagementController {
         return this.service.updateAppointment(id, dto);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Delete('appointments/:id')
     @ApiOperation({ summary: 'Supprimer un rendez-vous' })
@@ -159,7 +248,8 @@ export class ClinicManagementController {
     //         ADMISSIONS (Réception)
     // ==========================================
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Post('clinic/:clinicId/admissions')
     @ApiOperation({ summary: 'Admettre un patient (réception)' })
@@ -181,7 +271,8 @@ export class ClinicManagementController {
         return this.service.getAdmissionsByClinic(clinicId, { date, status });
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Put('admissions/:id')
     @ApiOperation({ summary: 'Modifier une admission' })
@@ -189,7 +280,8 @@ export class ClinicManagementController {
         return this.service.updateAdmission(id, dto);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Delete('admissions/:id')
     @ApiOperation({ summary: 'Supprimer une admission' })
@@ -201,7 +293,8 @@ export class ClinicManagementController {
     //    DOSSIERS MÉDICAUX (Medical Records)
     // ==========================================
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Post('clinic/:clinicId/medical-records')
     @ApiOperation({ summary: 'Créer un dossier médical / consultation' })
@@ -213,9 +306,9 @@ export class ClinicManagementController {
     @ApiBearerAuth()
     @Get('clinic/:clinicId/medical-records')
     @ApiOperation({ summary: 'Lister les dossiers médicaux de la clinique' })
-    @ApiQuery({ name: 'patientId', required: false, description: 'Filtrer par patient' })
-    @ApiQuery({ name: 'doctorId', required: false, description: 'Filtrer par médecin' })
-    @ApiQuery({ name: 'type', required: false, description: 'Filtrer par type (consultation, analyse, chirurgie, urgence, suivi, vaccination)' })
+    @ApiQuery({ name: 'patientId', required: false })
+    @ApiQuery({ name: 'doctorId', required: false })
+    @ApiQuery({ name: 'type', required: false, description: 'consultation, analyse, chirurgie, urgence, suivi, vaccination' })
     async getMedicalRecords(
         @Param('clinicId') clinicId: string,
         @Query('patientId') patientId?: string,
@@ -241,7 +334,8 @@ export class ClinicManagementController {
         return this.service.getPatientMedicalHistory(patientId);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Put('medical-records/:id')
     @ApiOperation({ summary: 'Modifier un dossier médical' })
@@ -249,7 +343,8 @@ export class ClinicManagementController {
         return this.service.updateMedicalRecord(id, dto);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Delete('medical-records/:id')
     @ApiOperation({ summary: 'Supprimer un dossier médical' })
@@ -261,7 +356,8 @@ export class ClinicManagementController {
     //         FACTURATION (Invoices)
     // ==========================================
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Post('clinic/:clinicId/invoices')
     @ApiOperation({ summary: 'Créer une facture' })
@@ -273,10 +369,10 @@ export class ClinicManagementController {
     @ApiBearerAuth()
     @Get('clinic/:clinicId/invoices')
     @ApiOperation({ summary: 'Lister les factures de la clinique' })
-    @ApiQuery({ name: 'paymentStatus', required: false, description: 'Filtrer par statut (pending, paid, partial)' })
-    @ApiQuery({ name: 'patientId', required: false, description: 'Filtrer par patient' })
-    @ApiQuery({ name: 'startDate', required: false, description: 'Date début (YYYY-MM-DD)' })
-    @ApiQuery({ name: 'endDate', required: false, description: 'Date fin (YYYY-MM-DD)' })
+    @ApiQuery({ name: 'paymentStatus', required: false, description: 'pending, paid, partial' })
+    @ApiQuery({ name: 'patientId', required: false })
+    @ApiQuery({ name: 'startDate', required: false, description: 'YYYY-MM-DD' })
+    @ApiQuery({ name: 'endDate', required: false, description: 'YYYY-MM-DD' })
     async getInvoices(
         @Param('clinicId') clinicId: string,
         @Query('paymentStatus') paymentStatus?: string,
@@ -295,7 +391,8 @@ export class ClinicManagementController {
         return this.service.getInvoiceById(id);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Put('invoices/:id')
     @ApiOperation({ summary: 'Modifier une facture / Enregistrer un paiement' })
@@ -303,7 +400,8 @@ export class ClinicManagementController {
         return this.service.updateInvoice(id, dto);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Delete('invoices/:id')
     @ApiOperation({ summary: 'Supprimer une facture' })
@@ -318,7 +416,7 @@ export class ClinicManagementController {
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @Get('clinic/:clinicId/dashboard')
-    @ApiOperation({ summary: 'Tableau de bord professionnel avec KPIs, finances, analytics et activité récente' })
+    @ApiOperation({ summary: 'Tableau de bord (KPIs, finances, analytics, activité récente)' })
     async getDashboard(@Param('clinicId') clinicId: string) {
         return this.service.getDashboardStats(clinicId);
     }

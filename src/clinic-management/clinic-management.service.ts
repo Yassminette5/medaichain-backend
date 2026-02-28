@@ -14,6 +14,8 @@ import { CreateAdmissionDto, UpdateAdmissionDto } from './dto/admission.dto';
 import { CreateMedicalRecordDto, UpdateMedicalRecordDto } from './dto/medical-record.dto';
 import { CreateInvoiceDto, UpdateInvoiceDto } from './dto/invoice.dto';
 import { User, UserDocument } from '../users/schemas/user.schema';
+import { ProfilesService } from '../profiles/profiles.service';
+import { UserRole } from '../users/schemas/user.schema';
 
 @Injectable()
 export class ClinicManagementService {
@@ -25,6 +27,7 @@ export class ClinicManagementService {
         @InjectModel(MedicalRecord.name) private medicalRecordModel: Model<MedicalRecordDocument>,
         @InjectModel(Invoice.name) private invoiceModel: Model<InvoiceDocument>,
         @InjectModel(User.name) private userModel: Model<UserDocument>,
+        private profilesService: ProfilesService,
     ) { }
 
     // ==========================================
@@ -60,6 +63,38 @@ export class ClinicManagementService {
     async deleteClinic(clinicId: string): Promise<{ message: string }> {
         await this.clinicModel.findByIdAndDelete(clinicId).exec();
         return { message: 'Clinique supprimée avec succès' };
+    }
+
+    /**
+     * Récupère la clinique du user connecté.
+     * Si elle n'existe pas encore (premier accès après invitation admin),
+     * elle est créée automatiquement à partir du ClinicProfile existant.
+     */
+    async getOrCreateClinicByOwner(ownerId: string): Promise<ClinicDocument> {
+        const ownerObjectId = new Types.ObjectId(ownerId);
+
+        // 1. Chercher la clinique existante
+        let clinic = await this.clinicModel.findOne({ ownerId: ownerObjectId }).exec();
+        if (clinic) return clinic;
+
+        // 2. Sinon, lire le ClinicProfile pour pré-remplir les données
+        let name = 'Ma Clinique';
+        let address = 'À compléter';
+        try {
+            const profile = await this.profilesService.getProfile(ownerId, UserRole.CLINIQUE) as any;
+            if (profile) {
+                if (profile.clinicName) name = profile.clinicName;
+                if (profile.address) address = profile.address;
+            }
+        } catch (_) { /* profil pas encore créé, on utilise les valeurs par défaut */ }
+
+        // 3. Créer la clinique automatiquement
+        clinic = new this.clinicModel({
+            ownerId: ownerObjectId,
+            name,
+            address,
+        });
+        return clinic.save();
     }
 
     // ==========================================

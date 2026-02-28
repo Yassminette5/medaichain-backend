@@ -97,6 +97,148 @@ export class ClinicManagementController {
     }
 
     // ==========================================
+    //   ENDPOINTS "MY" — résolution auto de la clinique
+    //   (pas besoin de connaître le clinicId)
+    // ==========================================
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
+    @ApiBearerAuth()
+    @Get('my')
+    @ApiOperation({
+        summary: 'Obtenir ma clinique (créée automatiquement si absente)',
+        description:
+            'Retourne le document Clinic du user connecté. ' +
+            'Si aucune clinique n\'existe encore (premier accès après invitation), ' +
+            'elle est créée automatiquement à partir du profil.',
+    })
+    async getMyClinicAuto(@Request() req) {
+        return this.service.getOrCreateClinicByOwner(req.user.userId);
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
+    @ApiBearerAuth()
+    @Post('my/doctors')
+    @ApiOperation({ summary: 'Ajouter un médecin à MA clinique (résolution automatique)' })
+    async addDoctorToMyClinic(@Request() req, @Body() dto: AddDoctorToClinicDto) {
+        const clinic = await this.service.getOrCreateClinicByOwner(req.user.userId);
+        return this.service.addDoctorToClinic(clinic._id.toString(), dto);
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
+    @ApiBearerAuth()
+    @Get('my/doctors')
+    @ApiOperation({ summary: 'Lister les médecins de MA clinique' })
+    async getMyDoctors(@Request() req) {
+        const clinic = await this.service.getOrCreateClinicByOwner(req.user.userId);
+        return this.service.getDoctorsByClinic(clinic._id.toString());
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
+    @ApiBearerAuth()
+    @Get('my/appointments')
+    @ApiOperation({ summary: 'Lister les rendez-vous de MA clinique' })
+    @ApiQuery({ name: 'date', required: false, description: 'YYYY-MM-DD' })
+    @ApiQuery({ name: 'status', required: false })
+    @ApiQuery({ name: 'doctorId', required: false })
+    async getMyAppointments(
+        @Request() req,
+        @Query('date') date?: string,
+        @Query('status') status?: string,
+        @Query('doctorId') doctorId?: string,
+    ) {
+        const clinic = await this.service.getOrCreateClinicByOwner(req.user.userId);
+        return this.service.getAppointmentsByClinic(clinic._id.toString(), { date, status, doctorId });
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
+    @ApiBearerAuth()
+    @Post('my/appointments')
+    @ApiOperation({ summary: 'Créer un rendez-vous dans MA clinique' })
+    async createMyAppointment(@Request() req, @Body() dto: CreateAppointmentDto) {
+        const clinic = await this.service.getOrCreateClinicByOwner(req.user.userId);
+        return this.service.createAppointment(clinic._id.toString(), dto);
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
+    @ApiBearerAuth()
+    @Get('my/admissions')
+    @ApiOperation({ summary: 'Lister les admissions de MA clinique' })
+    @ApiQuery({ name: 'date', required: false })
+    @ApiQuery({ name: 'status', required: false })
+    async getMyAdmissions(
+        @Request() req,
+        @Query('date') date?: string,
+        @Query('status') status?: string,
+    ) {
+        const clinic = await this.service.getOrCreateClinicByOwner(req.user.userId);
+        return this.service.getAdmissionsByClinic(clinic._id.toString(), { date, status });
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
+    @ApiBearerAuth()
+    @Post('my/admissions')
+    @ApiOperation({ summary: 'Admettre un patient dans MA clinique' })
+    async createMyAdmission(@Request() req, @Body() dto: CreateAdmissionDto) {
+        const clinic = await this.service.getOrCreateClinicByOwner(req.user.userId);
+        return this.service.createAdmission(clinic._id.toString(), dto);
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
+    @ApiBearerAuth()
+    @Get('my/medical-records')
+    @ApiOperation({ summary: 'Lister les dossiers médicaux de MA clinique' })
+    @ApiQuery({ name: 'patientId', required: false })
+    @ApiQuery({ name: 'doctorId', required: false })
+    @ApiQuery({ name: 'type', required: false })
+    async getMyMedicalRecords(
+        @Request() req,
+        @Query('patientId') patientId?: string,
+        @Query('doctorId') doctorId?: string,
+        @Query('type') type?: string,
+    ) {
+        const clinic = await this.service.getOrCreateClinicByOwner(req.user.userId);
+        return this.service.getMedicalRecordsByClinic(clinic._id.toString(), { patientId, doctorId, type });
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
+    @ApiBearerAuth()
+    @Get('my/invoices')
+    @ApiOperation({ summary: 'Lister les factures de MA clinique' })
+    @ApiQuery({ name: 'paymentStatus', required: false })
+    @ApiQuery({ name: 'patientId', required: false })
+    @ApiQuery({ name: 'startDate', required: false })
+    @ApiQuery({ name: 'endDate', required: false })
+    async getMyInvoices(
+        @Request() req,
+        @Query('paymentStatus') paymentStatus?: string,
+        @Query('patientId') patientId?: string,
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string,
+    ) {
+        const clinic = await this.service.getOrCreateClinicByOwner(req.user.userId);
+        return this.service.getInvoicesByClinic(clinic._id.toString(), { paymentStatus, patientId, startDate, endDate });
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
+    @ApiBearerAuth()
+    @Get('my/dashboard')
+    @ApiOperation({ summary: 'Tableau de bord de MA clinique' })
+    async getMyDashboard(@Request() req) {
+        const clinic = await this.service.getOrCreateClinicByOwner(req.user.userId);
+        return this.service.getDashboardStats(clinic._id.toString());
+    }
+
+    // ==========================================
     //              CLINIC CRUD
     // ==========================================
 

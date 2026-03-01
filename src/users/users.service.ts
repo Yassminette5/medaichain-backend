@@ -118,4 +118,21 @@ export class UsersService implements OnModuleInit {
     async markProfileCompleted(userId: string): Promise<void> {
         await this.userModel.findByIdAndUpdate(userId, { isProfileCompleted: true }).exec();
     }
+
+    async toggleActive(id: string): Promise<UserDocument> {
+        const user = await this.userModel.findById(id).exec();
+        if (!user) {
+            throw new NotFoundException('Utilisateur non trouvé');
+        }
+        user.isActive = !user.isActive;
+        return user.save();
+    }
+
+    async deleteUser(id: string): Promise<{ message: string }> {
+        const result = await this.userModel.findByIdAndDelete(id).exec();
+        if (!result) {
+            throw new NotFoundException('Utilisateur non trouvé');
+        }
+        return { message: 'Utilisateur supprimé avec succès' };
+    }
 }

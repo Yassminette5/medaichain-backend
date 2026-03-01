@@ -169,14 +169,27 @@ export class ProfilesService {
         speciality?: string;
         city?: string;
         wilaya?: string;
-    }): Promise<DoctorProfileDocument[]> {
-        const query: any = { isVerified: true };
-
+    }): Promise<any[]> {
+        const query: any = {};
         if (filters.speciality) query.speciality = new RegExp(filters.speciality, 'i');
         if (filters.city) query.city = new RegExp(filters.city, 'i');
         if (filters.wilaya) query.wilaya = new RegExp(filters.wilaya, 'i');
 
-        return this.doctorModel.find(query).exec();
+        const profiles = await this.doctorModel.find(query).populate('userId', 'fullName email phone').lean().exec();
+        return profiles.map((p: any) => {
+            const uid = p.userId;
+            const userId = uid?._id ? String(uid._id) : (p.userId ? String(p.userId) : null);
+            return {
+                ...p,
+                fullName: p.fullName || (uid?.fullName ?? 'Médecin'),
+                speciality: p.speciality || 'Médecine générale',
+                hospital: p.hospital || '',
+                city: p.city,
+                wilaya: p.wilaya,
+                yearsOfExperience: p.yearsOfExperience ?? 0,
+                userId: userId ? { _id: userId } : null,
+            };
+        });
     }
 
     // ========== RECHERCHER PHARMACIES ==========

@@ -129,7 +129,6 @@ curl -X POST http://localhost:3000/deliveries \
   "status": "pending",
   "medicationRequestId": "507f1f77bcf86cd799439011",
   "pharmacyId": "...",
-  "patientId": "507f1f77bcf86cd799439012",
   "deliveryAddress": "123 Patient Street",
   "deliveryCity": "Alger",
   "deliveryPostalCode": "16000",

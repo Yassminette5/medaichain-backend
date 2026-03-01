@@ -31,6 +31,12 @@ import { LabAppointmentsModule } from './lab-appointments/lab-appointments.modul
 // Prescriptions (Médecin → Patient)
 import { PrescriptionsModule } from './prescriptions/prescriptions.module';
 
+// Demandes d'accès (Patient → Médecin)
+import { AccessRequestsModule } from './access-requests/access-requests.module';
+
+// Appel vidéo (Agora) médecin-patient
+import { VideoCallModule } from './video-call/video-call.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
@@ -63,6 +69,8 @@ import { PrescriptionsModule } from './prescriptions/prescriptions.module';
     LabModule,
     LabAppointmentsModule,
     PrescriptionsModule,
+    AccessRequestsModule,
+    VideoCallModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -97,6 +97,26 @@ export class ClinicManagementService {
         return clinic.save();
     }
 
+    /**
+     * Récupère la clinique pour l'utilisateur connecté (propriétaire ou médecin assigné).
+     * Permet de lier clinique et patient quand le médecin consulte un dossier.
+     */
+    async getClinicForUser(userId: string, role: string): Promise<ClinicDocument> {
+        if (role === UserRole.CLINIQUE) {
+            return this.getOrCreateClinicByOwner(userId);
+        }
+        if (role === UserRole.MEDECIN) {
+            const link = await this.clinicDoctorModel
+                .findOne({ doctorId: new Types.ObjectId(userId) })
+                .exec();
+            if (link?.clinicId) {
+                return this.getClinicById((link.clinicId as any).toString());
+            }
+            throw new NotFoundException('Aucune clinique associée à ce médecin');
+        }
+        throw new NotFoundException('Rôle non autorisé pour accéder à une clinique');
+    }
+
     // ==========================================
     //         DOCTOR MANAGEMENT (FK → Clinic)
     // ==========================================

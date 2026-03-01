@@ -8,6 +8,7 @@ import {
     Param,
     UseGuards,
     Request,
+    BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { PrescriptionsService } from './prescriptions.service';
@@ -55,8 +56,10 @@ export class PrescriptionsController {
             },
         },
     })
-    async create(@Body() createPrescriptionDto: any, @Request() req) {
-        return this.prescriptionsService.create(createPrescriptionDto, req.user.userId);
+    async create(@Body() createPrescriptionDto: any, @Request() req: any) {
+        const doctorId = req.user?.userId ?? req.user?.sub;
+        if (!doctorId) throw new BadRequestException('Médecin non identifié');
+        return this.prescriptionsService.create(createPrescriptionDto, String(doctorId));
     }
 
     // ========== MES ORDONNANCES (MÉDECIN OU PATIENT) ==========
@@ -64,11 +67,15 @@ export class PrescriptionsController {
     @ApiOperation({
         summary: 'Mes ordonnances (médecin = celles émises / patient = celles reçues)',
     })
-    async getMyPrescriptions(@Request() req) {
-        if (req.user.role === UserRole.PATIENT) {
-            return this.prescriptionsService.findByPatient(req.user.userId);
-        } else if (req.user.role === UserRole.MEDECIN) {
-            return this.prescriptionsService.findByDoctor(req.user.userId);
+    async getMyPrescriptions(@Request() req: any) {
+        const userId = req.user?.userId ?? req.user?.sub;
+        if (!userId) return [];
+        const role = req.user?.role != null ? String(req.user.role).toLowerCase() : '';
+        if (role === 'patient') {
+            return this.prescriptionsService.findByPatient(String(userId));
+        }
+        if (role === 'medecin') {
+            return this.prescriptionsService.findByDoctor(String(userId));
         }
         return [];
     }
@@ -109,8 +116,10 @@ export class PrescriptionsController {
     @Roles(UserRole.MEDECIN)
     @Delete(':id')
     @ApiOperation({ summary: 'Supprimer une ordonnance (Médecin uniquement)' })
-    async delete(@Param('id') id: string, @Request() req) {
-        await this.prescriptionsService.delete(id, req.user.userId);
+    async delete(@Param('id') id: string, @Request() req: any) {
+        const doctorId = req.user?.userId ?? req.user?.sub;
+        if (!doctorId) throw new BadRequestException('Non identifié');
+        await this.prescriptionsService.delete(id, String(doctorId));
         return { message: 'Ordonnance supprimée avec succès' };
     }
 }

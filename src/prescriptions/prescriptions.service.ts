@@ -25,19 +25,22 @@ export class PrescriptionsService {
 
         const saved = await prescription.save();
 
-        // Notifier le patient
+        // Notifier le patient (userId doit être une chaîne pour la notification)
         try {
-            await this.notificationService.createNotification({
-                userId: createPrescriptionDto.patientId,
-                title: 'Nouvelle ordonnance',
-                message: 'Vous avez reçu une nouvelle ordonnance de votre médecin.',
-                type: NotificationType.PRESCRIPTION_UPDATE,
-                relatedId: saved._id.toString(),
-                data: {
-                    prescriptionId: saved._id.toString(),
-                    status: 'active',
-                },
-            });
+            const patientUserId = String(createPrescriptionDto.patientId ?? saved.patientId?.toString() ?? '');
+            if (patientUserId) {
+                await this.notificationService.createNotification({
+                    userId: patientUserId,
+                    title: 'Nouvelle ordonnance',
+                    message: 'Vous avez reçu une nouvelle ordonnance de votre médecin.',
+                    type: NotificationType.PRESCRIPTION_UPDATE,
+                    relatedId: saved._id.toString(),
+                    data: {
+                        prescriptionId: saved._id.toString(),
+                        status: 'active',
+                    },
+                });
+            }
         } catch (error) {
             console.error('[PrescriptionsService] Erreur notification patient:', error);
         }
@@ -49,7 +52,7 @@ export class PrescriptionsService {
     async findByPatient(patientId: string): Promise<PrescriptionDocument[]> {
         return this.prescriptionModel
             .find({ patientId: new Types.ObjectId(patientId) })
-            .populate('doctorId', 'email phone')
+            .populate('doctorId', 'fullName email phone')
             .sort({ createdAt: -1 })
             .exec();
     }

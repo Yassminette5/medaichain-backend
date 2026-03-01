@@ -191,10 +191,10 @@ export class ClinicManagementController {
     }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.CLINIQUE)
+    @Roles(UserRole.CLINIQUE, UserRole.MEDECIN)
     @ApiBearerAuth()
     @Get('my/medical-records')
-    @ApiOperation({ summary: 'Lister les dossiers médicaux de MA clinique' })
+    @ApiOperation({ summary: 'Lister les dossiers médicaux de MA clinique (propriétaire ou médecin)' })
     @ApiQuery({ name: 'patientId', required: false })
     @ApiQuery({ name: 'doctorId', required: false })
     @ApiQuery({ name: 'type', required: false })
@@ -204,7 +204,7 @@ export class ClinicManagementController {
         @Query('doctorId') doctorId?: string,
         @Query('type') type?: string,
     ) {
-        const clinic = await this.service.getOrCreateClinicByOwner(req.user.userId);
+        const clinic = await this.service.getClinicForUser(req.user.userId, req.user.role);
         return this.service.getMedicalRecordsByClinic(clinic._id.toString(), { patientId, doctorId, type });
     }
 
@@ -229,12 +229,12 @@ export class ClinicManagementController {
     }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.CLINIQUE)
+    @Roles(UserRole.CLINIQUE, UserRole.MEDECIN)
     @ApiBearerAuth()
     @Get('my/dashboard')
-    @ApiOperation({ summary: 'Tableau de bord de MA clinique' })
+    @ApiOperation({ summary: 'Tableau de bord de MA clinique (propriétaire ou médecin)' })
     async getMyDashboard(@Request() req) {
-        const clinic = await this.service.getOrCreateClinicByOwner(req.user.userId);
+        const clinic = await this.service.getClinicForUser(req.user.userId, req.user.role);
         return this.service.getDashboardStats(clinic._id.toString());
     }
 

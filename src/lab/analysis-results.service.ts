@@ -2,11 +2,13 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { AnalysisResult, AnalysisResultDocument } from './schemas/analysis-result.schema';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class AnalysisResultsService {
     constructor(
         @InjectModel(AnalysisResult.name) private analysisResultModel: Model<AnalysisResultDocument>,
+        private readonly usersService: UsersService,
     ) {}
 
     // ========== CRÉER UN RÉSULTAT D'ANALYSE ==========
@@ -97,6 +99,22 @@ export class AnalysisResultsService {
             })
             .select('-__v')
             .sort({ analysisDate: -1 })
+            .exec();
+    }
+
+    /**
+     * Récupère tous les résultats d'analyse d'un patient (par son userId).
+     * Utilisé par le médecin (dossier patient) ou le patient (ses propres résultats).
+     */
+    async getAnalysisResultsByPatientId(patientId: string): Promise<AnalysisResultDocument[]> {
+        const user = await this.usersService.findById(patientId);
+        const email = (user as any).email;
+        if (!email) return [];
+        return this.analysisResultModel
+            .find({ patientEmail: new RegExp(`^${String(email).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') })
+            .populate('labId', 'centreName name')
+            .select('-__v')
+            .sort({ analysisDate: -1, createdAt: -1 })
             .exec();
     }
 }

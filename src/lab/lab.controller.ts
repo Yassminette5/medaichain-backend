@@ -300,6 +300,21 @@ export class LabController {
     }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.MEDECIN, UserRole.PATIENT)
+    @ApiBearerAuth()
+    @Get('results/patient/:patientId')
+    @ApiOperation({
+        summary: 'Résultats d\'analyse d\'un patient (médecin ou patient)',
+        description: 'Pour le médecin : tous les résultats du patient (centre d\'analyse). Pour le patient : uniquement ses propres résultats.',
+    })
+    async getAnalysisResultsByPatient(@Request() req, @Param('patientId') patientId: string) {
+        if (req.user.role === UserRole.PATIENT && req.user.userId !== patientId) {
+            throw new NotFoundException('Accès non autorisé');
+        }
+        return this.analysisResultsService.getAnalysisResultsByPatientId(patientId);
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(UserRole.CENTRE_ANALYSE)
     @ApiBearerAuth()
     @Get('results/:id')
@@ -360,6 +375,8 @@ export class LabController {
             throw new NotFoundException('Fichier de résultat non trouvé');
         }
 
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
         return res.sendFile(filePath);
     }
 

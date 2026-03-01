@@ -28,11 +28,9 @@ export class NotificationController {
     @Query('limit') limit: number = 20,
     @Query('skip') skip: number = 0,
   ) {
-    return this.notificationService.getNotifications(
-      req.user.sub,
-      limit,
-      skip,
-    );
+    const userId = req.user?.userId ?? req.user?.sub;
+    if (!userId) return [];
+    return this.notificationService.getNotifications(String(userId), limit, skip);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -40,7 +38,9 @@ export class NotificationController {
   @Get('unread')
   @ApiOperation({ summary: 'Obtenir mes notifications non lues' })
   async getUnreadNotifications(@Request() req) {
-    return this.notificationService.getUnreadNotifications(req.user.sub);
+    const userId = req.user?.userId ?? req.user?.sub;
+    if (!userId) return [];
+    return this.notificationService.getUnreadNotifications(String(userId));
   }
 
   @UseGuards(JwtAuthGuard)
@@ -48,7 +48,8 @@ export class NotificationController {
   @Get('unread/count')
   @ApiOperation({ summary: 'Obtenir le nombre de notifications non lues' })
   async getUnreadCount(@Request() req) {
-    const count = await this.notificationService.getUnreadCount(req.user.sub);
+    const userId = req.user?.userId ?? req.user?.sub;
+    const count = await this.notificationService.getUnreadCount(userId);
     return { unreadCount: count };
   }
 
@@ -65,7 +66,9 @@ export class NotificationController {
   @Put('read-all')
   @ApiOperation({ summary: 'Marquer toutes les notifications comme lues' })
   async markAllAsRead(@Request() req) {
-    return this.notificationService.markAllAsRead(req.user.sub);
+    const userId = req.user?.userId ?? req.user?.sub;
+    if (!userId) return { modifiedCount: 0 };
+    return this.notificationService.markAllAsRead(String(userId));
   }
 
   @UseGuards(JwtAuthGuard)
@@ -81,6 +84,8 @@ export class NotificationController {
   @Delete()
   @ApiOperation({ summary: 'Supprimer toutes les notifications' })
   async deleteAllNotifications(@Request() req) {
-    return this.notificationService.deleteAllNotifications(req.user.sub);
+    const userId = req.user?.userId ?? req.user?.sub;
+    if (!userId) return { deletedCount: 0 };
+    return this.notificationService.deleteAllNotifications(String(userId));
   }
 }

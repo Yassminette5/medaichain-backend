@@ -44,8 +44,8 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document);
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
-  console.log(`🚀 MEDAIChain API running on http://localhost:${port}`);
+  await app.listen(port, '0.0.0.0');
+  console.log(`🚀 MEDAIChain API running on http://localhost:${port} (émulateur: http://10.0.2.2:${port})`);
   console.log(`📚 Swagger docs: http://localhost:${port}/api`);
   console.log(`📁 Uploads folder: ${join(process.cwd(), 'uploads')}`);
 }

@@ -16,6 +16,9 @@ import { CreateInvoiceDto, UpdateInvoiceDto } from './dto/invoice.dto';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { ProfilesService } from '../profiles/profiles.service';
 import { UserRole } from '../users/schemas/user.schema';
+import { NotificationService } from '../notifications/notification.service';
+import { NotificationType } from '../notifications/notification.schema';
+import { AppointmentStatus } from './schemas/appointment.schema';
 
 @Injectable()
 export class ClinicManagementService {
@@ -28,6 +31,7 @@ export class ClinicManagementService {
         @InjectModel(Invoice.name) private invoiceModel: Model<InvoiceDocument>,
         @InjectModel(User.name) private userModel: Model<UserDocument>,
         private profilesService: ProfilesService,
+        private notificationService: NotificationService,
     ) { }
 
     // ==========================================
@@ -46,6 +50,10 @@ export class ClinicManagementService {
         const clinic = await this.clinicModel.findOne({ ownerId: new Types.ObjectId(ownerId) }).exec();
         if (!clinic) throw new NotFoundException('Clinique non trouvée');
         return clinic;
+    }
+
+    async getAllClinics(): Promise<ClinicDocument[]> {
+        return this.clinicModel.find().exec();
     }
 
     async getClinicById(clinicId: string): Promise<ClinicDocument> {
@@ -173,19 +181,22 @@ export class ClinicManagementService {
         const appointment = new this.appointmentModel({
             ...dto,
             clinicId: new Types.ObjectId(clinicId),
-            doctorId: new Types.ObjectId(dto.doctorId),
             patientId: new Types.ObjectId(dto.patientId),
             date: new Date(dto.date),
         });
+        if (dto.doctorId) {
+            appointment.doctorId = new Types.ObjectId(dto.doctorId);
+        }
         return appointment.save();
     }
 
-    async getAppointmentsByClinic(clinicId: string, filters?: { date?: string; status?: string; doctorId?: string }): Promise<AppointmentDocument[]> {
+    async getAppointmentsByClinic(clinicId: string, filters?: { date?: string; status?: string; doctorId?: string; source?: string }): Promise<AppointmentDocument[]> {
         const query: any = { clinicId: new Types.ObjectId(clinicId) };
 
         if (filters?.date) query.date = { $gte: new Date(filters.date), $lt: new Date(new Date(filters.date).getTime() + 86400000) };
         if (filters?.status) query.status = filters.status;
         if (filters?.doctorId) query.doctorId = new Types.ObjectId(filters.doctorId);
+        if (filters?.source) query.source = filters.source;
 
         return this.appointmentModel
             .find(query)
@@ -206,11 +217,39 @@ export class ClinicManagementService {
     }
 
     async updateAppointment(appointmentId: string, dto: UpdateAppointmentDto): Promise<AppointmentDocument> {
+        const existingAppt = await this.getAppointmentById(appointmentId);
+        const oldStatus = existingAppt.status;
+
         const updateData: any = { ...dto };
         if (dto.date) updateData.date = new Date(dto.date);
 
         const appt = await this.appointmentModel.findByIdAndUpdate(appointmentId, updateData, { new: true }).exec();
         if (!appt) throw new NotFoundException('Rendez-vous non trouvé');
+
+        // Notification if status changed and it's an online booking
+        if (dto.status && dto.status !== oldStatus && appt.source === 'mobile') {
+            const clinic = await this.getClinicById(appt.clinicId.toString());
+            let title = 'Mise à jour de votre rendez-vous';
+            let message = `Votre rendez-vous à la clinique ${clinic.name} a été mis à jour.`;
+
+            if (dto.status === AppointmentStatus.CONFIRMED) {
+                title = 'Rendez-vous confirmé !';
+                message = `Bonne nouvelle ! Votre rendez-vous à la clinique ${clinic.name} le ${appt.date.toLocaleDateString()} à ${appt.timeSlot} a été accepté.`;
+            } else if (dto.status === AppointmentStatus.CANCELLED) {
+                title = 'Rendez-vous refusé';
+                message = `Désolé, votre demande de rendez-vous à la clinique ${clinic.name} a été refusée ou annulée.`;
+            }
+
+            await this.notificationService.createNotification({
+                userId: appt.patientId.toString(),
+                type: NotificationType.APPOINTMENT,
+                title,
+                message,
+                relatedId: appt._id.toString(),
+                data: { clinicId: clinic._id.toString(), status: dto.status }
+            });
+        }
+
         return appt;
     }
 
@@ -352,11 +391,22 @@ export class ClinicManagementService {
 
     private async generateInvoiceNumber(clinicId: string): Promise<string> {
         const year = new Date().getFullYear();
-        const count = await this.invoiceModel.countDocuments({
-            clinicId: new Types.ObjectId(clinicId),
-        });
-        const num = String(count + 1).padStart(4, '0');
-        return `FAC-${year}-${num}`;
+        const lastInvoice = await this.invoiceModel
+            .findOne({ clinicId: new Types.ObjectId(clinicId) })
+            .sort({ createdAt: -1 })
+            .exec();
+
+        let nextNum = 1;
+        if (lastInvoice && lastInvoice.invoiceNumber) {
+            const parts = lastInvoice.invoiceNumber.split('-');
+            const lastNum = parseInt(parts[parts.length - 1]);
+            if (!isNaN(lastNum)) {
+                nextNum = lastNum + 1;
+            }
+        }
+
+        const numStr = String(nextNum).padStart(4, '0');
+        return `FAC-${year}-${numStr}`;
     }
 
     async createInvoice(clinicId: string, dto: CreateInvoiceDto): Promise<InvoiceDocument> {

@@ -225,10 +225,22 @@ export class ProfilesService {
 
     // ========== GET TOUS LES PATIENTS ==========
     async getAllPatients(): Promise<any[]> {
-        return this.patientModel
-            .find()
-            .populate('userId', 'phone email')
-            .lean()
-            .exec();
+        // Obtenir tous les utilisateurs ayant le rôle PATIENT
+        const patientUsers = await this.usersService.findAllByRole(UserRole.PATIENT);
+
+        // Pour chaque utilisateur, chercher ses informations complémentaires (PatientInformation)
+        const patientsWithProfile = await Promise.all(patientUsers.map(async (u) => {
+            const info = await this.patientModel.findOne({ userId: u._id }).lean().exec();
+            return {
+                ...info,
+                _id: info?._id || u._id, // Utiliser l'ID de l'info ou de l'user
+                userId: u, // Objet user complet (email, phone, fullName)
+                fullName: info?.fullName || u.fullName || 'Patient Sans Nom',
+                phone: u.phone,
+                email: u.email
+            };
+        }));
+
+        return patientsWithProfile;
     }
 }

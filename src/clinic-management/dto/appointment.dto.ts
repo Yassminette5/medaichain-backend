@@ -3,9 +3,10 @@ import { IsString, IsOptional, IsEnum, IsDateString } from 'class-validator';
 import { AppointmentStatus } from '../schemas/appointment.schema';
 
 export class CreateAppointmentDto {
-    @ApiProperty({ description: 'ID du médecin', example: '60d5ec49f1b2c72b7c8e4a3d' })
+    @ApiProperty({ description: 'ID du médecin', example: '60d5ec49f1b2c72b7c8e4a3d', required: false })
+    @IsOptional()
     @IsString()
-    doctorId: string;
+    doctorId?: string;
 
     @ApiProperty({ description: 'ID du patient', example: '60d5ec49f1b2c72b7c8e4a3e' })
     @IsString()
@@ -33,6 +34,11 @@ export class CreateAppointmentDto {
     @IsOptional()
     @IsString()
     doctorName?: string;
+
+    @ApiPropertyOptional({ example: 'mobile' })
+    @IsOptional()
+    @IsString()
+    source?: string;
 }
 
 export class UpdateAppointmentDto {

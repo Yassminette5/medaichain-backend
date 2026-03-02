@@ -144,14 +144,16 @@ export class ClinicManagementController {
     @ApiQuery({ name: 'date', required: false, description: 'YYYY-MM-DD' })
     @ApiQuery({ name: 'status', required: false })
     @ApiQuery({ name: 'doctorId', required: false })
+    @ApiQuery({ name: 'source', required: false })
     async getMyAppointments(
         @Request() req,
         @Query('date') date?: string,
         @Query('status') status?: string,
         @Query('doctorId') doctorId?: string,
+        @Query('source') source?: string,
     ) {
         const clinic = await this.service.getOrCreateClinicByOwner(req.user.userId);
-        return this.service.getAppointmentsByClinic(clinic._id.toString(), { date, status, doctorId });
+        return this.service.getAppointmentsByClinic(clinic._id.toString(), { date, status, doctorId, source });
     }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
@@ -260,6 +262,12 @@ export class ClinicManagementController {
         return this.service.getClinicByOwner(req.user.userId);
     }
 
+    @Get('clinics')
+    @ApiOperation({ summary: 'Obtenir toutes les cliniques (public)' })
+    async getAllClinics() {
+        return this.service.getAllClinics();
+    }
+
     @Get('clinic/:id')
     @ApiOperation({ summary: 'Obtenir une clinique par ID (public)' })
     async getClinicById(@Param('id') id: string) {
@@ -339,8 +347,25 @@ export class ClinicManagementController {
     @Roles(UserRole.CLINIQUE)
     @ApiBearerAuth()
     @Post('clinic/:clinicId/appointments')
-    @ApiOperation({ summary: 'Créer un rendez-vous' })
+    @ApiOperation({ summary: 'Créer un rendez-vous (par la clinique)' })
     async createAppointment(@Param('clinicId') clinicId: string, @Body() dto: CreateAppointmentDto) {
+        return this.service.createAppointment(clinicId, dto);
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.PATIENT)
+    @ApiBearerAuth()
+    @Post('clinic/:clinicId/book-appointment')
+    @ApiOperation({ summary: 'Prendre un rendez-vous (par le patient)' })
+    async bookAppointmentPatient(@Request() req, @Param('clinicId') clinicId: string, @Body() body: any) {
+        const dto = new CreateAppointmentDto();
+        dto.patientId = req.user.userId;
+        dto.patientName = body.patientName || req.user.email;
+        dto.date = body.date || new Date().toISOString();
+        dto.timeSlot = body.timeSlot || '09:00 - 09:30';
+        dto.reason = body.reason || 'Réservation mobile';
+        dto.source = 'mobile';
+        // optionnel: pas de doctorId car c'est un patient qui reserve
         return this.service.createAppointment(clinicId, dto);
     }
 
@@ -351,13 +376,15 @@ export class ClinicManagementController {
     @ApiQuery({ name: 'date', required: false, description: 'Filtrer par date (YYYY-MM-DD)' })
     @ApiQuery({ name: 'status', required: false, description: 'Filtrer par statut' })
     @ApiQuery({ name: 'doctorId', required: false, description: 'Filtrer par médecin' })
+    @ApiQuery({ name: 'source', required: false })
     async getAppointments(
         @Param('clinicId') clinicId: string,
         @Query('date') date?: string,
         @Query('status') status?: string,
         @Query('doctorId') doctorId?: string,
+        @Query('source') source?: string,
     ) {
-        return this.service.getAppointmentsByClinic(clinicId, { date, status, doctorId });
+        return this.service.getAppointmentsByClinic(clinicId, { date, status, doctorId, source });
     }
 
     @UseGuards(JwtAuthGuard)

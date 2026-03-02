@@ -11,6 +11,7 @@ import { Invoice, InvoiceSchema } from './schemas/invoice.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { ProfilesModule } from '../profiles/profiles.module';
 import { AuthModule } from '../auth/auth.module';
+import { NotificationModule } from '../notifications/notification.module';
 
 @Module({
     imports: [
@@ -25,6 +26,7 @@ import { AuthModule } from '../auth/auth.module';
         ]),
         ProfilesModule,
         forwardRef(() => AuthModule),
+        NotificationModule,
     ],
     controllers: [ClinicManagementController],
     providers: [ClinicManagementService],

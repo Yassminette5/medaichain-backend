@@ -51,7 +51,7 @@ export class InsuranceDetails {
 
 @Schema({ timestamps: true })
 export class Invoice {
-    @Prop({ required: true, unique: true })
+    @Prop({ required: true })
     invoiceNumber: string; // FAC-2026-001
 
     @Prop({ type: Types.ObjectId, ref: 'Clinic', required: true })
@@ -128,4 +128,4 @@ export const InvoiceSchema = SchemaFactory.createForClass(Invoice);
 InvoiceSchema.index({ clinicId: 1, date: -1 });
 InvoiceSchema.index({ clinicId: 1, paymentStatus: 1 });
 InvoiceSchema.index({ patientId: 1, date: -1 });
-InvoiceSchema.index({ invoiceNumber: 1 }, { unique: true });
+InvoiceSchema.index({ clinicId: 1, invoiceNumber: 1 }, { unique: true });

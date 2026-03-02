@@ -15,7 +15,7 @@ export class LabAppointmentsService {
         private labService: LabService,
         private profilesService: ProfilesService,
         private notificationService: NotificationService,
-    ) {}
+    ) { }
 
     // ========== MAPPING CATÉGORIE → TYPE D'ANALYSE ==========
     private mapCategoryToAnalysisType(category: string): AnalysisType {
@@ -39,9 +39,11 @@ export class LabAppointmentsService {
             throw new BadRequestException('La date du rendez-vous ne peut pas être dans le passé');
         }
 
-        // Résoudre le labId depuis le centreName si fourni
+        // Résoudre le labId depuis la payload ou depuis le centreName
         let labId: Types.ObjectId | undefined;
-        if (data.centreName) {
+        if (data.labId) {
+            labId = new Types.ObjectId(data.labId as any);
+        } else if (data.centreName) {
             const labs = await this.labService.getAllLabs();
             const lab = labs.find(l => l.centreName === data.centreName);
             if (lab) {

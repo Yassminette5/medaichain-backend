@@ -256,4 +256,21 @@ export class ProfilesController {
     ) {
         return this.profilesService.searchLabs({ localisation, categorie });
     }
+
+    // ================================================================
+    // GET /profiles/patients  — Liste de tous les patients (Gestion)
+    // ================================================================
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.ADMIN, UserRole.CLINIQUE, UserRole.MEDECIN)
+    @ApiBearerAuth()
+    @Get('patients')
+    @ApiOperation({
+        summary: 'Obtenir la liste de tous les patients',
+        description: 'Retourne la liste complète des patients enregistrés avec leurs informations de profil et coordonnées.',
+    })
+    @ApiResponse({ status: 200, description: 'Liste des patients' })
+    @ApiResponse({ status: 403, description: 'Accès réservé au staff médical ou admin' })
+    async getAllPatients() {
+        return this.profilesService.getAllPatients();
+    }
 }

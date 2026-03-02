@@ -17,7 +17,7 @@ export class Appointment {
     @Prop({ type: Types.ObjectId, ref: 'Clinic', required: true })
     clinicId: Types.ObjectId; // FK → Clinic
 
-    @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+    @Prop({ type: Types.ObjectId, ref: 'User', required: false })
     doctorId: Types.ObjectId; // FK → User (role=medecin)
 
     @Prop({ type: Types.ObjectId, ref: 'User', required: true })
@@ -49,6 +49,9 @@ export class Appointment {
 
     @Prop()
     doctorName: string; // Nom du médecin (dénormalisé pour affichage rapide)
+
+    @Prop({ default: 'clinic' })
+    source: string; // 'clinic' ou 'mobile'
 }
 
 export const AppointmentSchema = SchemaFactory.createForClass(Appointment);

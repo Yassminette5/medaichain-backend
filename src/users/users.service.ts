@@ -135,4 +135,8 @@ export class UsersService implements OnModuleInit {
         }
         return { message: 'Utilisateur supprimé avec succès' };
     }
+
+    async findAllByRole(role: UserRole): Promise<UserDocument[]> {
+        return this.userModel.find({ role }).sort({ fullName: 1 }).exec();
+    }
 }

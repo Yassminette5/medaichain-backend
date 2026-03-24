@@ -152,6 +152,38 @@ export class LabAppointmentsService {
         await this.labAppointmentModel.deleteOne({ _id: appt._id }).exec();
     }
 
+    // ========== CONSTRUIRE LES INFOS PATIENT ENRICHIES (helper privé) ==========
+    private async buildPatientInfo(patientUser: any, patientIdStr: string): Promise<Record<string, any>> {
+        const base = {
+            fullName: '',
+            email: patientUser?.email || '',
+            phone: patientUser?.phone || '',
+            age: null,
+            gender: null,
+            allergies: [],
+            chronicDiseases: [],
+            height: null,
+            weight: null,
+        };
+
+        try {
+            const profile = await this.profilesService.getProfile(patientIdStr, UserRole.PATIENT);
+            if (profile) {
+                base.fullName         = profile.fullName         || '';
+                base.age              = profile.age              ?? null;
+                base.gender           = profile.gender           ?? null;
+                base.allergies        = profile.allergies        || [];
+                base.chronicDiseases  = profile.chronicDiseases  || [];
+                base.height           = profile.height           ?? null;
+                base.weight           = profile.weight           ?? null;
+            }
+        } catch {
+            /* silencieux — on renvoie les champs de base */
+        }
+
+        return base;
+    }
+
     // ========== TOUS LES RDV DU CENTRE (LAB) ==========
     async getLabAppointments(labProfileId: string): Promise<any[]> {
         const appointments = await this.labAppointmentModel
@@ -167,19 +199,44 @@ export class LabAppointmentsService {
                 const patientUser = obj.patientId as any;
                 const patientIdStr = patientUser?._id?.toString() || patientUser?.toString();
 
-                try {
-                    const profile = await this.profilesService.getProfile(patientIdStr, UserRole.PATIENT);
-                    obj.patientInfo = {
-                        fullName: profile?.fullName || '',
-                        email: patientUser?.email || '',
-                        phone: patientUser?.phone || '',
-                    };
-                } catch {
-                    obj.patientInfo = { fullName: '', email: patientUser?.email || '', phone: patientUser?.phone || '' };
-                }
+                obj.patientInfo = await this.buildPatientInfo(patientUser, patientIdStr);
                 return obj;
             })
         );
+    }
+
+    // ========== DÉTAIL ENRICHI D'UN RDV (LAB) ==========
+    async getAppointmentDetails(appointmentId: string, labProfileId: string): Promise<any> {
+        if (!Types.ObjectId.isValid(appointmentId)) {
+            throw new NotFoundException('ID de rendez-vous invalide');
+        }
+
+        const appt = await this.labAppointmentModel
+            .findOne({
+                _id: new Types.ObjectId(appointmentId),
+                labId: new Types.ObjectId(labProfileId),
+            })
+            .populate('patientId', 'email phone')
+            .select('-__v')
+            .exec();
+
+        if (!appt) throw new NotFoundException('Rendez-vous non trouvé ou ne vous appartient pas');
+
+        const obj = appt.toObject() as any;
+        const patientUser = obj.patientId as any;
+        const patientIdStr = patientUser?._id?.toString() || patientUser?.toString();
+
+        obj.patientInfo = await this.buildPatientInfo(patientUser, patientIdStr);
+
+        // Injecter aussi dans patientId pour compatibilité frontend (appointment['patientId'].age, etc.)
+        if (typeof obj.patientId === 'object' && obj.patientId !== null) {
+            obj.patientId = {
+                ...obj.patientId,
+                ...obj.patientInfo,
+            };
+        }
+
+        return obj;
     }
 
     // ========== ACCEPTER UN RENDEZ-VOUS (LAB) ==========

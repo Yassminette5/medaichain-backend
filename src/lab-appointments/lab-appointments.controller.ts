@@ -128,6 +128,26 @@ export class LabAppointmentsController {
     }
 
     // ================================================================
+    // GET /lab-appointments/lab/requests/:id  —  Détail enrichi (LAB)
+    // ================================================================
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CENTRE_ANALYSE)
+    @ApiBearerAuth()
+    @Get('lab/requests/:id')
+    @ApiOperation({
+        summary: 'Détails complets d\'une demande de rendez-vous (centre d\'analyse)',
+        description:
+            'Retourne le rendez-vous enrichi avec les informations complètes du patient : ' +
+            'fullName, age, gender, allergies, chronicDiseases, height, weight, email, phone. ' +
+            'Les champs sont disponibles dans patientInfo et aussi dans patientId pour compatibilité frontend.',
+    })
+    async getLabRequestDetail(@Request() req, @Param('id') id: string) {
+        const labProfile = await this.labService.getLabProfile(req.user.userId);
+        if (!labProfile?._id) throw new NotFoundException('Profil laboratoire non trouvé');
+        return this.labAppointmentsService.getAppointmentDetails(id, labProfile._id.toString());
+    }
+
+    // ================================================================
     // PUT /lab-appointments/lab/:id/accept  —  Accepter (LAB)
     // ================================================================
     @UseGuards(JwtAuthGuard, RolesGuard)

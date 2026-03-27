@@ -41,7 +41,8 @@
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.0",
     "tesseract.js": "^5.0.0",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "firebase-admin": "^12.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

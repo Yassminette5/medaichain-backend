@@ -89,6 +89,13 @@ export class UsersService implements OnModuleInit {
         return user;
     }
 
+    async updateFcmToken(userId: string, fcmToken: string): Promise<void> {
+        await this.userModel.findByIdAndUpdate(userId, {
+            fcmToken,
+            fcmTokenUpdatedAt: new Date(),
+        }).exec();
+    }
+
     async updateLastLogin(id: string): Promise<void> {
         await this.userModel.findByIdAndUpdate(id, { lastLoginAt: new Date() }).exec();
     }

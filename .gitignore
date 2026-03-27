@@ -57,3 +57,13 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Uploads
 /uploads
+
+# secrets
+medaichain-19e32-2b9d7e84bf5c.json
+
+
+# local debug artifacts
+.gitstatus.txt
+.gitbranch.txt
+.gitremote.txt
+

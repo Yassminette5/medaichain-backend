@@ -361,8 +361,20 @@ export class PharmacyController {
 
   @Get('list/all')
   @ApiOperation({ summary: 'Lister toutes les pharmacies (public)' })
-  async getAllPharmacies() {
-    return this.stockService.getAllPharmacies();
+  async getAllPharmacies(
+    @Query('city') _city?: string,
+    @Query('wilaya') _wilaya?: string,
+    @Query('is24Hours') _is24Hours?: string,
+    @Query('hasDelivery') _hasDelivery?: string,
+  ) {
+    // TODO: Re-enable and validate server-side filters (city/wilaya/is24Hours/hasDelivery)
+    // once nearby ranking/filter UX is finalized on mobile.
+    const pharmacies = await this.profilesService.searchPharmacies({});
+
+    return pharmacies.map((pharmacy: any) => ({
+      ...pharmacy.toObject(),
+      pharmacyId: pharmacy.userId?.toString(),
+    }));
   }
 
   @Get(':pharmacyId/available-medications')

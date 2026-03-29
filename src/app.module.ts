@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { MlModule } from './ml/ml.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
@@ -36,7 +37,6 @@ import { AccessRequestsModule } from './access-requests/access-requests.module';
 
 // Appel vidéo (Agora) médecin-patient
 import { VideoCallModule } from './video-call/video-call.module';
-
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
@@ -68,6 +68,7 @@ import { VideoCallModule } from './video-call/video-call.module';
     NotificationModule,
     LabModule,
     LabAppointmentsModule,
+    MlModule,
     PrescriptionsModule,
     AccessRequestsModule,
     VideoCallModule,

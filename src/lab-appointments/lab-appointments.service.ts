@@ -7,6 +7,7 @@ import { ProfilesService } from '../profiles/profiles.service';
 import { NotificationService } from '../notifications/notification.service';
 import { NotificationType } from '../notifications/notification.schema';
 import { UserRole } from '../users/schemas/user.schema';
+import { MlService } from '../ml/ml.service';
 
 @Injectable()
 export class LabAppointmentsService {
@@ -15,6 +16,7 @@ export class LabAppointmentsService {
         private labService: LabService,
         private profilesService: ProfilesService,
         private notificationService: NotificationService,
+        private mlService: MlService,
     ) { }
 
     // ========== MAPPING CATÉGORIE → TYPE D'ANALYSE ==========
@@ -64,44 +66,98 @@ export class LabAppointmentsService {
             if (mapped !== AnalysisType.AUTRE) analysisType = mapped;
         }
 
+        // ── Récupérer les infos patient pour le modèle ML ──
+        let patientName = 'Un patient';
+        let patientAllergies: string[] = [];
+        try {
+            const profile = await this.profilesService.getProfile(patientId, UserRole.PATIENT);
+            if (profile?.fullName) patientName = profile.fullName;
+            if (profile?.allergies?.length) patientAllergies = profile.allergies;
+        } catch { /* silencieux */ }
+
+        // ── Appel du modèle ML pour déterminer le statut ──
+        let status: 'accepted' | 'pending' = 'pending';
+        try {
+            const mlPayload = {
+                note: data.notes || '',
+                type_analyse: analysisType,
+                allergies: patientAllergies.join('|'),
+            };
+            const mlResult = await this.mlService.predict(mlPayload);
+            if (mlResult?.result === 'Acceptée automatiquement') {
+                status = 'accepted';
+            }
+            console.log(`[LabAppointments] ML predict → "${mlResult?.result}" → statut: ${status}`);
+        } catch (err) {
+            console.warn('[LabAppointments] ML indisponible, statut par défaut: pending', err.message);
+        }
+
         const appointment = new this.labAppointmentModel({
             ...data,
             patientId: new Types.ObjectId(patientId),
             labId,
             analysisType,
-            status: 'pending',
+            status,
         });
 
         const saved = await appointment.save();
 
-        // Notification au centre d'analyse
+        // ── Notifications ──
         if (labId) {
             try {
                 const labProfile = await this.labService.getLabById(labId.toString());
                 if (labProfile?.userId) {
-                    let patientName = 'Un patient';
-                    try {
-                        const profile = await this.profilesService.getProfile(patientId, UserRole.PATIENT);
-                        if (profile?.fullName) patientName = profile.fullName;
-                    } catch { /* silencieux */ }
-
-                    await this.notificationService.createNotification({
-                        userId: labProfile.userId.toString(),
-                        type: NotificationType.APPOINTMENT,
-                        title: 'Nouvelle demande de rendez-vous',
-                        message: `${patientName} a demandé un rendez-vous pour le ${new Date(saved.appointmentDate).toLocaleDateString('fr-FR')} — ${saved.centreName}`,
-                        data: {
-                            appointmentId: saved._id.toString(),
-                            patientId,
-                            status: 'pending',
-                            centreName: saved.centreName,
-                            appointmentDate: saved.appointmentDate,
-                            analysisType: saved.analysisType,
-                        },
-                    });
+                    if (status === 'accepted') {
+                        // Notifier le centre que la demande est auto-acceptée
+                        await this.notificationService.createNotification({
+                            userId: labProfile.userId.toString(),
+                            type: NotificationType.APPOINTMENT,
+                            title: 'Nouvelle demande acceptée automatiquement ✅',
+                            message: `${patientName} a une demande acceptée automatiquement pour le ${new Date(saved.appointmentDate).toLocaleDateString('fr-FR')} — ${saved.centreName}`,
+                            data: {
+                                appointmentId: saved._id.toString(),
+                                patientId,
+                                status: 'accepted',
+                                centreName: saved.centreName,
+                                appointmentDate: saved.appointmentDate,
+                                analysisType: saved.analysisType,
+                            },
+                        });
+                    } else {
+                        // Notifier le centre d'une nouvelle demande en attente
+                        await this.notificationService.createNotification({
+                            userId: labProfile.userId.toString(),
+                            type: NotificationType.APPOINTMENT,
+                            title: 'Nouvelle demande de rendez-vous',
+                            message: `${patientName} a demandé un rendez-vous pour le ${new Date(saved.appointmentDate).toLocaleDateString('fr-FR')} — ${saved.centreName}`,
+                            data: {
+                                appointmentId: saved._id.toString(),
+                                patientId,
+                                status: 'pending',
+                                centreName: saved.centreName,
+                                appointmentDate: saved.appointmentDate,
+                                analysisType: saved.analysisType,
+                            },
+                        });
+                    }
                 }
             } catch (err) {
                 console.error('[LabAppointments] Erreur notification centre:', err);
+            }
+        }
+
+        // Notifier le patient si accepté automatiquement
+        if (status === 'accepted') {
+            try {
+                await this.notificationService.createNotification({
+                    userId: patientId,
+                    type: NotificationType.APPOINTMENT,
+                    title: 'Demande acceptée automatiquement ✅',
+                    message: `Votre demande de rendez-vous du ${new Date(saved.appointmentDate).toLocaleDateString('fr-FR')} au centre ${saved.centreName} a été acceptée automatiquement.`,
+                    data: { appointmentId: saved._id.toString(), status: 'accepted', centreName: saved.centreName },
+                });
+            } catch (err) {
+                console.error('[LabAppointments] Erreur notification patient auto-accept:', err);
             }
         }
 

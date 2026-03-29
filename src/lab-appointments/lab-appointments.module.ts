@@ -6,6 +6,7 @@ import { LabAppointment, LabAppointmentSchema } from './schemas/lab-appointment.
 import { LabModule } from '../lab/lab.module';
 import { ProfilesModule } from '../profiles/profiles.module';
 import { NotificationModule } from '../notifications/notification.module';
+import { MlModule } from '../ml/ml.module';
 
 @Module({
     imports: [
@@ -15,6 +16,7 @@ import { NotificationModule } from '../notifications/notification.module';
         LabModule,
         ProfilesModule,
         NotificationModule,
+        MlModule,
     ],
     controllers: [LabAppointmentsController],
     providers: [LabAppointmentsService],

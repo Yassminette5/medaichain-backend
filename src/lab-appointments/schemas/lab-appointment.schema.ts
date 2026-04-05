@@ -3,6 +3,12 @@ import { Document, Types } from 'mongoose';
 
 export type LabAppointmentDocument = LabAppointment & Document;
 
+export enum SubscriptionTier {
+    FREE = 'free',
+    PLUS = 'plus',
+    PREMIUM = 'premium',
+}
+
 export enum AnalysisType {
     ANALYSE_SANGUIN = 'analyse_sanguin',
     SCANNER = 'scanner',
@@ -49,6 +55,9 @@ export class LabAppointment {
 
     @Prop()
     notes?: string;
+
+    @Prop({ default: SubscriptionTier.FREE, enum: Object.values(SubscriptionTier) })
+    subscriptionTier: SubscriptionTier;
 }
 
 export const LabAppointmentSchema = SchemaFactory.createForClass(LabAppointment);

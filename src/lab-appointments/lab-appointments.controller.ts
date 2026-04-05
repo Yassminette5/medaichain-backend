@@ -37,8 +37,9 @@ export class LabAppointmentsController {
     @ApiOperation({
         summary: 'Prendre un rendez-vous dans un centre d\'analyse (patient)',
         description:
-            'Crée une demande de rendez-vous (status = pending). ' +
-            'Le centre reçoit une notification en temps réel. ' +
+            'Crée une demande de rendez-vous. ' +
+            'Le champ subscriptionTier ("free"|"plus"|"premium") indique le niveau d\'abonnement RevenueCat du patient. ' +
+            'Le modèle ML utilise ce tier pour prioriser : premium → auto-accepté, plus → bonus priorité, free → standard. ' +
             'Champs requis : centreName, analysisType, appointmentDate.',
     })
     @ApiBody({
@@ -50,6 +51,7 @@ export class LabAppointmentsController {
                 hasCurrentTreatment: false,
                 hasAllergies: false,
                 notes: 'Jeûne de 12h effectué',
+                subscriptionTier: 'free',
             },
         },
     })

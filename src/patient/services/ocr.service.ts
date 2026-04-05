@@ -172,10 +172,23 @@ IMPORTANT:
             throw new HttpException('User not found', HttpStatus.NOT_FOUND);
         }
 
+        // Support both flat payload or { data: {...} }
+        const dataPayload = extractedFields?.data ?? extractedFields ?? {};
+
         const ocrData = new this.ocrDataModel({
-            ...extractedFields,
+            // Champs de base
             userId: new Types.ObjectId(userId),
             image_name: imageName,
+            // Valeurs par défaut si non fournies
+            title: dataPayload.title || extractedFields.title || 'Document Médical',
+            description: dataPayload.description || extractedFields.description || '',
+            // Champs optionnels normalisés
+            sourceType: dataPayload.sourceType || extractedFields.sourceType || 'patient',
+            mimeType: dataPayload.mimeType || extractedFields.mimeType,
+            // Conserver tout le résultat structuré si fourni
+            result: dataPayload.result || dataPayload,
+            // Conserver le reste du payload pour compat desc (strict:false)
+            ...dataPayload,
         });
 
         return ocrData.save();

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { LabAppointment, LabAppointmentDocument, AnalysisType } from './schemas/lab-appointment.schema';
+import { LabAppointment, LabAppointmentDocument, AnalysisType, SubscriptionTier } from './schemas/lab-appointment.schema';
 import { LabService } from '../lab/lab.service';
 import { ProfilesService } from '../profiles/profiles.service';
 import { NotificationService } from '../notifications/notification.service';
@@ -75,21 +75,46 @@ export class LabAppointmentsService {
             if (profile?.allergies?.length) patientAllergies = profile.allergies;
         } catch { /* silencieux */ }
 
+        // ── Résoudre le subscriptionTier ──
+        const subscriptionTier: SubscriptionTier =
+            Object.values(SubscriptionTier).includes(data.subscriptionTier as SubscriptionTier)
+                ? (data.subscriptionTier as SubscriptionTier)
+                : SubscriptionTier.FREE;
+
+        console.log(`[LabAppointments] Tier reçu du frontend: "${data.subscriptionTier}" → résolu: "${subscriptionTier}"`);
+
         // ── Appel du modèle ML pour déterminer le statut ──
+        // Le tier est envoyé comme feature au ML :
+        //   • premium → toujours auto-accepté (court-circuit côté backend aussi)
+        //   • plus    → bonus priorité dans le modèle ML
+        //   • free    → traitement standard
         let status: 'accepted' | 'pending' = 'pending';
-        try {
-            const mlPayload = {
-                note: data.notes || '',
-                type_analyse: analysisType,
-                allergies: patientAllergies.join('|'),
-            };
-            const mlResult = await this.mlService.predict(mlPayload);
-            if (mlResult?.result === 'Acceptée automatiquement') {
-                status = 'accepted';
+
+        if (subscriptionTier === SubscriptionTier.PREMIUM) {
+            // Premium = toujours accepté automatiquement, pas besoin du ML
+            status = 'accepted';
+            console.log(`[LabAppointments] Patient PREMIUM → auto-accepté sans ML`);
+        } else {
+            try {
+                const mlPayload = {
+                    note: data.notes || '',
+                    type_analyse: analysisType,
+                    allergies: patientAllergies.join('|'),
+                    subscription_tier: subscriptionTier,  // ← NOUVEAU : envoyé au ML
+                };
+                const mlResult = await this.mlService.predict(mlPayload);
+                if (mlResult?.result === 'Acceptée automatiquement') {
+                    status = 'accepted';
+                }
+                console.log(`[LabAppointments] ML predict → "${mlResult?.result}" → statut: ${status}`);
+            } catch (err) {
+                console.warn('[LabAppointments] ML indisponible, statut par défaut: pending', err.message);
+                // Fallback : si ML indisponible, les Plus sont auto-acceptés aussi
+                if (subscriptionTier === SubscriptionTier.PLUS) {
+                    status = 'accepted';
+                    console.log(`[LabAppointments] ML down + patient PLUS → fallback auto-accepté`);
+                }
             }
-            console.log(`[LabAppointments] ML predict → "${mlResult?.result}" → statut: ${status}`);
-        } catch (err) {
-            console.warn('[LabAppointments] ML indisponible, statut par défaut: pending', err.message);
         }
 
         const appointment = new this.labAppointmentModel({
@@ -97,6 +122,7 @@ export class LabAppointmentsService {
             patientId: new Types.ObjectId(patientId),
             labId,
             analysisType,
+            subscriptionTier,
             status,
         });
 

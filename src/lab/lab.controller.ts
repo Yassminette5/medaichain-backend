@@ -189,21 +189,20 @@ export class LabController {
                 },
             }),
             fileFilter: (req, file, cb) => {
-                // Accepter uniquement PDF
-                if (file.mimetype === 'application/pdf') {
-                    cb(null, true);
-                } else {
-                    cb(
-                        new BadRequestException('Format de fichier non autorisé. Seul le format PDF est accepté.'),
-                        false,
-                    );
-                }
+                // Accepter PDF ou image (jpg, jpeg, png, webp)
+                const isPdf = file.mimetype === 'application/pdf';
+                const isImg = !!file.mimetype.match(/\/(jpg|jpeg|png|webp)$/);
+                if (isPdf || isImg) return cb(null, true);
+                cb(
+                    new BadRequestException('Format non autorisé. Autorisés: PDF, JPG, JPEG, PNG, WEBP.'),
+                    false,
+                );
             },
         }),
     )
     @ApiOperation({
-        summary: 'Uploader un résultat d\'analyse (PDF uniquement)',
-        description: 'Endpoint POST pour uploader un résultat d\'analyse. Le formulaire doit contenir: patientName, patientEmail, analysisType, analysisDate, file (PDF uniquement), et optionnellement notes et analysisTypeOther. Seul le format PDF est accepté.',
+        summary: 'Uploader un résultat d\'analyse (PDF ou Image)',
+        description: 'Endpoint POST pour uploader un résultat d\'analyse. Le formulaire doit contenir: patientName, patientEmail, analysisType, analysisDate, file (PDF ou Image: jpg, jpeg, png, webp), et optionnellement notes et analysisTypeOther.',
     })
     @ApiConsumes('multipart/form-data')
     @ApiBody({
@@ -216,7 +215,7 @@ export class LabController {
                 analysisType: { type: 'string', enum: Object.values(AnalysisType), description: 'Type d\'analyse' },
                 analysisTypeOther: { type: 'string', description: 'Type d\'analyse si analysisType = AUTRE' },
                 analysisDate: { type: 'string', format: 'date', description: 'Date de l\'analyse (YYYY-MM-DD)' },
-                file: { type: 'string', format: 'binary', description: 'Fichier de résultat (PDF uniquement)' },
+                file: { type: 'string', format: 'binary', description: 'Fichier de résultat (PDF ou Image: jpg, jpeg, png, webp)' },
                 notes: { type: 'string', description: 'Notes optionnelles' },
             },
         },
@@ -365,8 +364,8 @@ export class LabController {
 
     @Get('uploads/results/:filename')
     @ApiOperation({ 
-        summary: 'Servir un fichier de résultat d\'analyse (route API alternative)',
-        description: 'Route API alternative pour servir les fichiers de résultats d\'analyse. Utilisez cette route si les fichiers statiques ne sont pas accessibles directement. URL: /lab/uploads/results/nom-du-fichier.pdf'
+        summary: 'Servir un fichier de résultat d\'analyse (PDF ou Image)',
+        description: 'Route API alternative pour servir les fichiers de résultats d\'analyse (PDF ou image). URL: /lab/uploads/results/<nom-du-fichier>',
     })
     async getResultFile(@Param('filename') filename: string, @Res() res: Response) {
         const filePath = join(process.cwd(), 'uploads', 'analysis-results', filename);
@@ -375,7 +374,18 @@ export class LabController {
             throw new NotFoundException('Fichier de résultat non trouvé');
         }
 
-        res.setHeader('Content-Type', 'application/pdf');
+        const lower = filename.toLowerCase();
+        if (lower.endsWith('.pdf')) {
+            res.setHeader('Content-Type', 'application/pdf');
+        } else if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+            res.setHeader('Content-Type', 'image/jpeg');
+        } else if (lower.endsWith('.png')) {
+            res.setHeader('Content-Type', 'image/png');
+        } else if (lower.endsWith('.webp')) {
+            res.setHeader('Content-Type', 'image/webp');
+        } else {
+            res.setHeader('Content-Type', 'application/octet-stream');
+        }
         res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
         return res.sendFile(filePath);
     }

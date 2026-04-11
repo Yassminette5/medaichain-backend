@@ -3,15 +3,21 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { OcrService } from './services/ocr.service';
 import { OcrController } from './controllers/ocr.controller';
 import { OCRDataSchema } from './entities/ocr.entity';
+import { PatientAnalysis, PatientAnalysisSchema } from './entities/patient-analysis.entity';
+import { PatientAnalysisService } from './services/patient-analysis.service';
+import { PatientAnalysisController } from './controllers/patient-analysis.controller';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
     imports: [
-        MongooseModule.forFeature([{ name: 'OCRData', schema: OCRDataSchema }]),
+        MongooseModule.forFeature([
+            { name: 'OCRData', schema: OCRDataSchema },
+            { name: PatientAnalysis.name, schema: PatientAnalysisSchema },
+        ]),
         AuthModule,
     ],
-    controllers: [OcrController],
-    providers: [OcrService],
-    exports: [OcrService],
+    controllers: [OcrController, PatientAnalysisController],
+    providers: [OcrService, PatientAnalysisService],
+    exports: [OcrService, PatientAnalysisService],
 })
 export class PatientModule { }

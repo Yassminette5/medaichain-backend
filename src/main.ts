@@ -5,8 +5,15 @@ import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 
+/** Base64 image dans le JSON dépasse vite la limite Express par défaut (100kb) */
+const BODY_LIMIT = process.env.REQUEST_BODY_LIMIT || '25mb';
+
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bodyParser: false,
+  });
+  app.useBodyParser('json', { limit: BODY_LIMIT });
+  app.useBodyParser('urlencoded', { limit: BODY_LIMIT, extended: true });
 
   // Enable CORS for Flutter web and app
   app.enableCors({

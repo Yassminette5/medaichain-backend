@@ -37,6 +37,9 @@ import { AccessRequestsModule } from './access-requests/access-requests.module';
 // Appel vidéo (Agora) médecin-patient
 import { VideoCallModule } from './video-call/video-call.module';
 
+// IA pour les médecins (Analyses locales)
+import { DoctorAiModule } from './doctor-ai/doctor-ai.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
@@ -71,6 +74,7 @@ import { VideoCallModule } from './video-call/video-call.module';
     PrescriptionsModule,
     AccessRequestsModule,
     VideoCallModule,
+    DoctorAiModule,
   ],
   controllers: [AppController],
   providers: [AppService],

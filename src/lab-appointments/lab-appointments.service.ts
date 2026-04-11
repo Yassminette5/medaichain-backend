@@ -7,7 +7,7 @@ import { ProfilesService } from '../profiles/profiles.service';
 import { NotificationService } from '../notifications/notification.service';
 import { NotificationType } from '../notifications/notification.schema';
 import { UserRole } from '../users/schemas/user.schema';
-import { MlService } from '../ml/ml.service';
+import { MlApiService } from '../ml/ml-api.service';
 
 @Injectable()
 export class LabAppointmentsService {
@@ -16,7 +16,7 @@ export class LabAppointmentsService {
         private labService: LabService,
         private profilesService: ProfilesService,
         private notificationService: NotificationService,
-        private mlService: MlService,
+        private mlApiService: MlApiService,
     ) { }
 
     // ========== MAPPING CATÉGORIE → TYPE D'ANALYSE ==========
@@ -32,6 +32,25 @@ export class LabAppointmentsService {
             'neuro': AnalysisType.BIOLOGIE,
         };
         return map[category.toLowerCase().trim()] || AnalysisType.AUTRE;
+    }
+
+    /** Aligné sur python/ml_app.py — si le Flask ML est arrêté, on accepte quand même les vraies urgences. */
+    private noteIndiqueUrgence(note: string | undefined): boolean {
+        const n = (note || '').toLowerCase();
+        const markers = [
+            'urgent',
+            'urgence',
+            'critique',
+            'immédiat',
+            'immediate',
+            'asap',
+            'prioritaire',
+            'priorité',
+            'priorite',
+            'grave',
+            'douleur intense',
+        ];
+        return markers.some((m) => n.includes(m));
     }
 
     // ========== CRÉER UN RENDEZ-VOUS (PATIENT) ==========
@@ -81,39 +100,41 @@ export class LabAppointmentsService {
                 ? (data.subscriptionTier as SubscriptionTier)
                 : SubscriptionTier.FREE;
 
-        console.log(`[LabAppointments] Tier reçu du frontend: "${data.subscriptionTier}" → résolu: "${subscriptionTier}"`);
+        console.log(`[LabAppointments] Tier (info seulement, n’influence pas le ML): "${subscriptionTier}"`);
 
-        // ── Appel du modèle ML pour déterminer le statut ──
-        // Le tier est envoyé comme feature au ML :
-        //   • premium → toujours auto-accepté (court-circuit côté backend aussi)
-        //   • plus    → bonus priorité dans le modèle ML
-        //   • free    → traitement standard
+        // ── Statut uniquement selon le modèle ML (predict-ml-api) : pas de forçage Premium / Plus ──
         let status: 'accepted' | 'pending' = 'pending';
 
-        if (subscriptionTier === SubscriptionTier.PREMIUM) {
-            // Premium = toujours accepté automatiquement, pas besoin du ML
-            status = 'accepted';
-            console.log(`[LabAppointments] Patient PREMIUM → auto-accepté sans ML`);
-        } else {
-            try {
-                const mlPayload = {
-                    note: data.notes || '',
-                    type_analyse: analysisType,
-                    allergies: patientAllergies.join('|'),
-                    subscription_tier: subscriptionTier,  // ← NOUVEAU : envoyé au ML
-                };
-                const mlResult = await this.mlService.predict(mlPayload);
-                if (mlResult?.result === 'Acceptée automatiquement') {
+        try {
+            const mlPayload = {
+                note: data.notes || '',
+                type_analyse: analysisType,
+                allergies: patientAllergies.join('|'),
+            };
+            const mlResult = await this.mlApiService.predictLab(mlPayload);
+
+            if (mlResult?.error) {
+                console.warn('[LabAppointments] ML ml-api indisponible:', mlResult.details);
+                if (this.noteIndiqueUrgence(data.notes)) {
+                    status = 'accepted';
+                    console.warn(
+                        '[LabAppointments] Secours: note urgente acceptée alors que le service Python (port 5000) ne répond pas — lancez `npm run start:dev` ou `npm run ml:predict`.',
+                    );
+                }
+            } else {
+                const r = String(mlResult?.result ?? '').trim();
+                if (r === 'Acceptée automatiquement') {
                     status = 'accepted';
                 }
-                console.log(`[LabAppointments] ML predict → "${mlResult?.result}" → statut: ${status}`);
-            } catch (err) {
-                console.warn('[LabAppointments] ML indisponible, statut par défaut: pending', err.message);
-                // Fallback : si ML indisponible, les Plus sont auto-acceptés aussi
-                if (subscriptionTier === SubscriptionTier.PLUS) {
-                    status = 'accepted';
-                    console.log(`[LabAppointments] ML down + patient PLUS → fallback auto-accepté`);
-                }
+                console.log(`[LabAppointments] ML ml-api → "${r}" → statut: ${status}`);
+            }
+        } catch (err: any) {
+            console.warn('[LabAppointments] ML indisponible, statut: pending', err?.message);
+            if (this.noteIndiqueUrgence(data.notes)) {
+                status = 'accepted';
+                console.warn(
+                    '[LabAppointments] Secours urgence (exception ML) — vérifiez que Flask tourne sur le port 5000.',
+                );
             }
         }
 

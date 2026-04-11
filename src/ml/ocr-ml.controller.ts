@@ -1,4 +1,14 @@
-import { Controller, Post, UseGuards, UseInterceptors, UploadedFile, Req } from '@nestjs/common';
+import {
+	BadRequestException,
+	Controller,
+	HttpException,
+	HttpStatus,
+	Post,
+	Req,
+	UploadedFile,
+	UseGuards,
+	UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OcrMlService } from './ocr-ml.service';
@@ -12,13 +22,26 @@ export class OcrMlController {
 	@Post('ocr-analyze')
 	@UseInterceptors(FileInterceptor('file'))
 	async analyze(@UploadedFile() file: Express.Multer.File, @Req() req) {
+		if (!file?.buffer?.length) {
+			throw new BadRequestException('Fichier manquant ou vide (champ multipart: file)');
+		}
 		const userId: string | undefined = req?.user?.userId ?? req?.user?.sub;
-		const result = await this.ocrMlService.analyzeBuffer(
-			file.buffer,
-			file.originalname || 'document',
-			userId,
-		);
-		return result;
+		try {
+			return await this.ocrMlService.analyzeBuffer(
+				file.buffer,
+				file.originalname || 'document',
+				userId,
+			);
+		} catch (e: any) {
+			const msg = e?.message ?? String(e);
+			throw new HttpException(
+				{
+					message: 'Service OCR indisponible ou erreur Flask',
+					detail: msg,
+				},
+				HttpStatus.BAD_GATEWAY,
+			);
+		}
 	}
 }
 

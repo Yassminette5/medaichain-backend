@@ -43,8 +43,20 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  const port = process.env.PORT || 3000;
-  await app.listen(port, '0.0.0.0');
+  const port = Number(process.env.PORT) || 3000;
+  try {
+    await app.listen(port, '0.0.0.0');
+  } catch (err: unknown) {
+    const e = err as { code?: string };
+    if (e?.code === 'EADDRINUSE') {
+      console.error(
+        `\n❌ Port ${port} déjà utilisé (autre instance Nest ou autre appli).\n` +
+          `   → Ferme l’autre terminal / processus, ou lance : npm run free:3000\n` +
+          `   → Ou change PORT dans le fichier .env (ex. PORT=3001) et adapte l’URL côté Flutter.\n`,
+      );
+    }
+    throw err;
+  }
   console.log(`🚀 MEDAIChain API running on http://localhost:${port} (émulateur: http://10.0.2.2:${port})`);
   console.log(`📚 Swagger docs: http://localhost:${port}/api`);
   console.log(`📁 Uploads folder: ${join(process.cwd(), 'uploads')}`);

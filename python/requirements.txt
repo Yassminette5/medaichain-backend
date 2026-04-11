@@ -1,0 +1,10 @@
+flask>=3.0.0
+pandas>=2.0.0
+joblib>=1.3.0
+scikit-learn>=1.3.0
+# OCR (npm run ml:ocr) — installer Tesseract + Poppler (PDF) sur la machine hôte
+pytesseract>=0.3.10
+opencv-python-headless>=4.8.0
+Pillow>=10.0.0
+numpy>=1.24.0
+pdf2image>=1.16.0

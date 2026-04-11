@@ -2,18 +2,18 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 
+/**
+ * 2ᵉ modèle (logique du dossier ml-api) : POST …/predict-ml-api
+ * Même serveur Flask que MlService (ML_SERVICE_URL), autre endpoint.
+ */
 @Injectable()
-export class MlService {
+export class MlApiService {
   constructor(private readonly config: ConfigService) {}
 
-  /**
-   * Appelle le service Flask Python (dossier python/ml_app.py, port 5000 par défaut).
-   * URL : ML_SERVICE_URL dans .env, ex. http://127.0.0.1:5000
-   */
-  async predict(data: any) {
+  async predictLab(data: any) {
     const base =
       this.config.get<string>('ML_SERVICE_URL') || 'http://127.0.0.1:5000';
-    const url = `${base.replace(/\/+$/, '')}/predict`;
+    const url = `${base.replace(/\/+$/, '')}/predict-ml-api`;
 
     try {
       const response = await axios.post(url, data);
@@ -24,7 +24,7 @@ export class MlService {
           ? JSON.stringify(error.response.data)
           : error?.message ?? String(error);
       return {
-        error: 'Erreur communication avec modèle ML',
+        error: 'Erreur communication avec le modèle ml-api',
         details,
       };
     }

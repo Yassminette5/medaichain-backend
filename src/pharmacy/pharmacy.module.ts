@@ -17,6 +17,7 @@ import {
 import { ProfilesModule } from '../profiles/profiles.module';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationModule } from '../notifications/notification.module';
+import { PrescriptionAnalysisService } from './prescription-analysis.service';
 
 @Module({
   imports: [
@@ -34,11 +35,13 @@ import { NotificationModule } from '../notifications/notification.module';
     PharmacyStockService,
     PharmacyStatisticsService,
     MedicationRequestService,
+    PrescriptionAnalysisService,
   ],
   exports: [
     PharmacyStockService,
     PharmacyStatisticsService,
     MedicationRequestService,
+    PrescriptionAnalysisService,
   ],
 })
 export class PharmacyModule {}

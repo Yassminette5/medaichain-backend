@@ -188,6 +188,45 @@ export class PharmacyController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.PHARMACIE)
   @ApiBearerAuth()
+  @Get('my/medication-statistics')
+  @ApiOperation({
+    summary: 'Statistiques des médicaments demandés (MA pharmacie)',
+    description:
+      'Retourne les médicaments les plus demandés pour un mois donné. Le filtre de mois est optionnel (format YYYY-MM).',
+  })
+  @ApiQuery({
+    name: 'month',
+    required: false,
+    description: 'Mois au format YYYY-MM (ex: 2026-04). Par défaut: mois courant.',
+  })
+  async getMyMedicationStatistics(
+    @Request() req,
+    @Query('month') month?: string,
+  ) {
+    return this.statisticsService.getMedicationStatistics(req.user.userId, month);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Get('admin/medication-statistics')
+  @ApiOperation({
+    summary: 'Statistiques globales des médicaments demandés (ADMIN)',
+    description:
+      'Retourne les médicaments les plus demandés (toutes pharmacies confondues) pour un mois donné. Filtre optionnel month=YYYY-MM.',
+  })
+  @ApiQuery({
+    name: 'month',
+    required: false,
+    description: 'Mois au format YYYY-MM (ex: 2026-04). Par défaut: mois courant.',
+  })
+  async getAdminMedicationStatistics(@Query('month') month?: string) {
+    return this.statisticsService.getGlobalMedicationStatistics(month);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.PHARMACIE)
+  @ApiBearerAuth()
   @Get('my/requests')
   @ApiOperation({ summary: 'Demandes de médicaments reçues par MA pharmacie' })
   @ApiQuery({ name: 'status', required: false, enum: RequestStatus })
@@ -325,12 +364,14 @@ export class PharmacyController {
             address: location.address,
           }
         : undefined,
-      medications: dto.medications.map((m) => ({
-        medicationName: m.name ?? m.medicationName ?? '',
-        medicationDosage: m.dosage ?? m.medicationDosage ?? '',
-        quantity: m.quantity ?? 1,
-        unit: m.unit,
-      })),
+      medications: (dto.medications ?? [])
+        .map((m) => ({
+          medicationName: (m.name ?? m.medicationName ?? '').trim(),
+          medicationDosage: (m.dosage ?? m.medicationDosage ?? '').trim(),
+          quantity: m.quantity ?? 1,
+          unit: m.unit,
+        }))
+        .filter((m) => m.medicationName.length > 0),
       isUrgent: dto.isUrgent ?? false,
       requestsDelivery: dto.requestsDelivery ?? false,
       prescriptionImageUrl: dto.prescriptionImageUrl,
@@ -471,6 +512,26 @@ export class PharmacyController {
   @ApiOperation({ summary: "Statistiques d'une pharmacie par ID" })
   async getStatistics(@Param('pharmacyId') pharmacyId: string) {
     return this.statisticsService.getStatistics(pharmacyId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Get(':pharmacyId/medication-statistics')
+  @ApiOperation({
+    summary: "Statistiques des médicaments demandés (par ID pharmacie)",
+    description:
+      'Retourne les médicaments les plus demandés pour un mois donné. Le filtre de mois est optionnel (format YYYY-MM).',
+  })
+  @ApiQuery({
+    name: 'month',
+    required: false,
+    description: 'Mois au format YYYY-MM (ex: 2026-04). Par défaut: mois courant.',
+  })
+  async getMedicationStatistics(
+    @Param('pharmacyId') pharmacyId: string,
+    @Query('month') month?: string,
+  ) {
+    return this.statisticsService.getMedicationStatistics(pharmacyId, month);
   }
 
   @UseGuards(JwtAuthGuard)

@@ -7,6 +7,42 @@ import { RequestStatus } from './schemas/medication-request.schema';
 export class PharmacyStatisticsService {
   constructor(private readonly requestService: MedicationRequestService) {}
 
+  /**
+   * Medication statistics for a given month.
+   *
+   * @param month Optional month filter in the form YYYY-MM (ex: 2026-04).
+   *             If omitted/invalid, defaults to the current month.
+   */
+  async getMedicationStatistics(
+    pharmacyId: string,
+    month?: string,
+  ): Promise<TopMedication[]> {
+    const requests = await this.requestService.getRequestsByPharmacy(pharmacyId);
+    const { start, end, label } = this.getMonthRange(month);
+
+    const filtered = requests.filter((r) => {
+      const reqDate = new Date(r.requestDate);
+      return reqDate >= start && reqDate < end;
+    });
+
+    return this.getTopRequestedMedications(filtered, label);
+  }
+
+  /**
+   * Admin/global medication statistics for a given month (all pharmacies).
+   */
+  async getGlobalMedicationStatistics(month?: string): Promise<TopMedication[]> {
+    const requests = await this.requestService.getAllRequests();
+    const { start, end, label } = this.getMonthRange(month);
+
+    const filtered = requests.filter((r) => {
+      const reqDate = new Date((r as any).requestDate);
+      return reqDate >= start && reqDate < end;
+    });
+
+    return this.getTopRequestedMedications(filtered, label);
+  }
+
   async getStatistics(pharmacyId: string): Promise<PharmacyStatistics> {
     const requests = await this.requestService.getRequestsByPharmacy(pharmacyId);
     
@@ -120,14 +156,15 @@ export class PharmacyStatisticsService {
     if (requests.length === 0) {
       return [];
     }
-    
+
     const medicationCounts = new Map<string, { count: number; medication: any }>();
-    
-    requests.forEach(r => {
-      r.medications.forEach(med => {
+
+    // Existing behavior: use requested quantities as a proxy for "top".
+    requests.forEach((r) => {
+      (r.medications ?? []).forEach((med) => {
         const key = `${med.name}-${med.dosage}`;
         const existing = medicationCounts.get(key);
-        
+
         if (existing) {
           existing.count += med.quantity;
         } else {
@@ -152,5 +189,80 @@ export class PharmacyStatisticsService {
       changePercentage: 0, // Calculate real change when historical data is available
       pricePerUnit: 0, // Should come from actual price data
     }));
+  }
+
+  private getTopRequestedMedications(requests: any[], periodLabel: string): TopMedication[] {
+    if (requests.length === 0) {
+      return [];
+    }
+
+    // Count how many times each medication was requested (occurrences across requests).
+    const medicationCounts = new Map<string, { count: number; medication: any }>();
+
+    requests.forEach((r) => {
+      (r.medications ?? []).forEach((med) => {
+        const name = (med?.name ?? '').toString().trim();
+        const dosage = (med?.dosage ?? '').toString().trim();
+        if (!name) return;
+
+        const key = `${name}__${dosage}`;
+        const existing = medicationCounts.get(key);
+
+        if (existing) {
+          existing.count += 1;
+        } else {
+          medicationCounts.set(key, {
+            count: 1,
+            medication: med,
+          });
+        }
+      });
+    });
+
+    const sorted = Array.from(medicationCounts.entries())
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 10);
+
+    return sorted.map(([, data]) => {
+      const idCandidate = data?.medication?.id ?? data?.medication?._id;
+      return {
+        id: (idCandidate ?? `${data.medication?.name ?? ''}-${data.medication?.dosage ?? ''}`).toString(),
+        name: (data.medication?.name ?? '').toString(),
+        dosage: (data.medication?.dosage ?? '').toString(),
+        requestCount: data.count,
+        period: periodLabel,
+        changePercentage: 0,
+        pricePerUnit: 0,
+      };
+    });
+  }
+
+  private getMonthRange(month?: string): { start: Date; end: Date; label: string } {
+    const now = new Date();
+
+    let year = now.getFullYear();
+    let monthIndex = now.getMonth();
+
+    const raw = (month ?? '').trim();
+    // Accept YYYY-MM or YYYY-MM-DD... (we only care about the first 7 chars).
+    if (/^\d{4}-\d{2}/.test(raw)) {
+      const y = Number(raw.slice(0, 4));
+      const m = Number(raw.slice(5, 7));
+      if (Number.isFinite(y) && Number.isFinite(m) && m >= 1 && m <= 12) {
+        year = y;
+        monthIndex = m - 1;
+      }
+    } else if (raw) {
+      const parsed = new Date(raw);
+      if (!Number.isNaN(parsed.getTime())) {
+        year = parsed.getFullYear();
+        monthIndex = parsed.getMonth();
+      }
+    }
+
+    const start = new Date(year, monthIndex, 1, 0, 0, 0, 0);
+    const end = new Date(year, monthIndex + 1, 1, 0, 0, 0, 0);
+    const label = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+    return { start, end, label };
   }
 }

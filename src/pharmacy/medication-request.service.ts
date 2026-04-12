@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
 import {
@@ -14,6 +14,7 @@ import {
 import { NotificationService } from '../notifications/notification.service';
 import { NotificationType } from '../notifications/notification.schema';
 import { ProfilesService } from '../profiles/profiles.service';
+import { PrescriptionAnalysisService } from './prescription-analysis.service';
 
 @Injectable()
 export class MedicationRequestService {
@@ -22,6 +23,7 @@ export class MedicationRequestService {
     private medicationRequestModel: Model<MedicationRequest>,
     private notificationService: NotificationService,
     private profilesService: ProfilesService,
+    private prescriptionAnalysisService: PrescriptionAnalysisService,
   ) {}
 
   async getRequestsByPharmacy(
@@ -29,6 +31,16 @@ export class MedicationRequestService {
     status?: RequestStatus,
   ): Promise<MedicationRequest[]> {
     const filter: FilterQuery<MedicationRequest> = { pharmacyId };
+
+    if (status && status !== RequestStatus.TOUT) {
+      filter.status = status;
+    }
+
+    return await this.medicationRequestModel.find(filter).exec();
+  }
+
+  async getAllRequests(status?: RequestStatus): Promise<MedicationRequest[]> {
+    const filter: FilterQuery<MedicationRequest> = {};
 
     if (status && status !== RequestStatus.TOUT) {
       filter.status = status;
@@ -67,7 +79,62 @@ export class MedicationRequestService {
       location: createDto.patientLocation,
     };
 
-    const medications: RequestedMedication[] = createDto.medications.map(
+    const manualMedications = (createDto.medications || [])
+      .filter((med) => med?.medicationName?.trim())
+      .map((med) => ({
+        medicationName: med.medicationName.trim(),
+        medicationDosage: med.medicationDosage?.trim() || '',
+        quantity: med.quantity && med.quantity > 0 ? med.quantity : 1,
+        unit: med.unit || 'unités',
+      }));
+
+    let extractedMedications: Array<{
+      medicationName: string;
+      medicationDosage: string;
+      quantity: number;
+      unit: string;
+    }> = [];
+    let prescriptionAnalysisFailed = false;
+
+    if (createDto.prescriptionImageUrl?.trim()) {
+      try {
+        const analyzed =
+          await this.prescriptionAnalysisService.extractMedicationsFromImageUrl(
+            createDto.prescriptionImageUrl,
+          );
+        console.log(
+          '[MedicationRequestService] Extracted medications from image:',
+          analyzed,
+        );
+
+        extractedMedications = analyzed.map((med) => ({
+          medicationName: med.name.trim(),
+          medicationDosage: med.dosage?.trim() || '',
+          quantity: 1,
+          unit: 'unités',
+        }));
+      } catch (error) {
+        prescriptionAnalysisFailed = true;
+        console.error(
+          '[MedicationRequestService] Prescription image analysis failed:',
+          error,
+        );
+      }
+    }
+
+    const mergedMedications = this.mergeMedications(
+      manualMedications,
+      extractedMedications,
+    );
+
+    const hasPrescriptionImage = Boolean(createDto.prescriptionImageUrl?.trim());
+    if (mergedMedications.length === 0 && !hasPrescriptionImage) {
+      throw new BadRequestException(
+        'Au moins un medicament manuel ou une image analysable est requis',
+      );
+    }
+
+    const medications: RequestedMedication[] = mergedMedications.map(
       (med, index) => ({
         id: `${Date.now()}-${index}`,
         name: med.medicationName,
@@ -88,10 +155,19 @@ export class MedicationRequestService {
       isUrgent: createDto.isUrgent || false,
       requestsDelivery: createDto.requestsDelivery || false,
       prescriptionImageUrl: createDto.prescriptionImageUrl,
+      validationNote:
+        hasPrescriptionImage && medications.length === 0
+          ? prescriptionAnalysisFailed
+            ? 'Prescription reçue: analyse OCR indisponible (réseau). Merci de vérifier l’image manuellement.'
+            : 'Prescription reçue: analyse OCR en cours ou sans médicaments détectés. Merci de vérifier l’image manuellement.'
+          : undefined,
     });
 
     const title = 'Nouvelle demande patient';
-    const message = `${createDto.patientName} vous a envoyé une ordonnance (${medications.length} médicament(s)).`;
+    const message =
+      medications.length > 0
+        ? `${createDto.patientName} vous a envoyé une ordonnance (${medications.length} médicament(s)).`
+        : `${createDto.patientName} vous a envoyé une ordonnance (image reçue, analyse OCR indisponible).`;
 
     try {
       await this.notificationService.createNotification({
@@ -131,6 +207,41 @@ export class MedicationRequestService {
     }
 
     return newRequest;
+  }
+
+  private mergeMedications(
+    manual: Array<{
+      medicationName: string;
+      medicationDosage: string;
+      quantity: number;
+      unit: string;
+    }>,
+    extracted: Array<{
+      medicationName: string;
+      medicationDosage: string;
+      quantity: number;
+      unit: string;
+    }>,
+  ) {
+    const merged = [...manual];
+    const seen = new Set(
+      manual.map((med) => this.medicationKey(med.medicationName, med.medicationDosage)),
+    );
+
+    for (const med of extracted) {
+      const key = this.medicationKey(med.medicationName, med.medicationDosage);
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      merged.push(med);
+    }
+
+    return merged;
+  }
+
+  private medicationKey(name: string, dosage: string): string {
+    return `${name}`.trim().toLowerCase() + '::' + `${dosage}`.trim().toLowerCase();
   }
 
   async updateRequest(

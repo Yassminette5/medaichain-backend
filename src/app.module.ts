@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { HealthController } from './health/health.controller';
 
 // Clinique modules
 import { ClinicManagementModule } from './clinic-management/clinic-management.module';
@@ -76,7 +77,7 @@ import { DoctorAiModule } from './doctor-ai/doctor-ai.module';
     VideoCallModule,
     DoctorAiModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, HealthController],
   providers: [AppService],
 })
 export class AppModule { }

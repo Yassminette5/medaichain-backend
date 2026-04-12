@@ -1,5 +1,20 @@
-import { Controller, Get, Put, Delete, Param, Body, UseGuards, Request } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Put,
+  Delete,
+  Param,
+  Body,
+  UseGuards,
+  Request,
+  Logger,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -9,6 +24,8 @@ import { UserRole } from './schemas/user.schema';
 @ApiTags('Users')
 @Controller('users')
 export class UsersController {
+    private readonly logger = new Logger(UsersController.name);
+
     constructor(private readonly usersService: UsersService) { }
 
     @Get('stats')
@@ -49,5 +66,29 @@ export class UsersController {
     @ApiOperation({ summary: 'Supprimer un utilisateur' })
     async deleteUser(@Param('id') id: string) {
         return this.usersService.deleteUser(id);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @Put('me/fcm-token')
+    @ApiOperation({ summary: 'Mettre à jour mon token FCM' })
+    async updateMyFcmToken(
+        @Request() req: { user: { userId: string } },
+        @Body() body: { fcmToken: string },
+    ) {
+        const token = body?.fcmToken;
+        const tokenSuffix = token ? token.slice(-6) : 'null';
+        const tokenLength = token?.length ?? 0;
+
+        this.logger.log(
+            `Updating FCM token for user=${req.user.userId} (len=${tokenLength}, suffix=${tokenSuffix})`,
+        );
+
+        await this.usersService.updateFcmToken(req.user.userId, token);
+
+        this.logger.log(
+            `FCM token updated for user=${req.user.userId} (len=${tokenLength}, suffix=${tokenSuffix})`,
+        );
+        return { message: 'FCM token mis à jour avec succès' };
     }
 }

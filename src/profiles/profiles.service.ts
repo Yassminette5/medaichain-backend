@@ -47,6 +47,37 @@ export class ProfilesService {
         }
     }
 
+    /**
+     * Resolve a pharmacy identifier to the owning pharmacy user's id.
+     *
+     * Some client flows may send the PharmacyProfile document `_id` (from search/list results)
+     * while other flows send the pharmacy `userId` directly.
+     *
+     * Returns `null` when the value cannot be resolved.
+     */
+    async resolvePharmacyUserId(pharmacyId: string): Promise<string | null> {
+        if (!pharmacyId || pharmacyId === 'undefined') return null;
+
+        if (!Types.ObjectId.isValid(pharmacyId)) return null;
+        const objectId = new Types.ObjectId(pharmacyId);
+
+        // 1) If it's a PharmacyProfile document id, map it to its userId.
+        const byProfileId = await this.pharmacyModel
+            .findById(objectId)
+            .select('userId')
+            .exec();
+        if (byProfileId?.userId) return byProfileId.userId.toString();
+
+        // 2) Otherwise assume the input might already be the pharmacy user's id.
+        const byUserId = await this.pharmacyModel
+            .findOne({ userId: objectId })
+            .select('userId')
+            .exec();
+        if (byUserId?.userId) return byUserId.userId.toString();
+
+        return null;
+    }
+
     // ========== CRÉER/METTRE À JOUR PROFIL MÉDECIN ==========
     async upsertDoctorProfile(userId: string, data: Partial<DoctorProfile>): Promise<DoctorProfileDocument> {
         if (!userId || userId === 'undefined') {

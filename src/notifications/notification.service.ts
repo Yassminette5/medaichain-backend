@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import * as admin from 'firebase-admin';
+import { existsSync } from 'fs';
+import { isAbsolute, resolve } from 'path';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import {
   Notification,
@@ -20,18 +22,33 @@ export class NotificationService {
 
   private firebaseReady = false;
 
+  private readEnv(primaryKey: string, legacyKey?: string): string | undefined {
+    return process.env[primaryKey] || (legacyKey ? process.env[legacyKey] : undefined);
+  }
+
+  private resolveServiceAccountPath(): string | undefined {
+    const rawPath =
+      this.readEnv('FIREBASE_SERVICE_ACCOUNT_PATH', 'FCM_SERVICE_ACCOUNT_PATH') ||
+      process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+    if (!rawPath) {
+      return undefined;
+    }
+
+    // Build output runs from dist/, so resolve relative paths from project root.
+    return isAbsolute(rawPath) ? rawPath : resolve(process.cwd(), rawPath);
+  }
+
   getFirebaseStatus(): {
     configured: boolean;
     initialized: boolean;
     projectId?: string;
     usingServiceAccountPath: boolean;
   } {
-    const serviceAccountPath =
-      process.env.FIREBASE_SERVICE_ACCOUNT_PATH ||
-      process.env.GOOGLE_APPLICATION_CREDENTIALS;
-    const projectId = process.env.FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    const serviceAccountPath = this.resolveServiceAccountPath();
+    const projectId = this.readEnv('FIREBASE_PROJECT_ID', 'FCM_PROJECT_ID');
+    const clientEmail = this.readEnv('FIREBASE_CLIENT_EMAIL', 'FCM_CLIENT_EMAIL');
+    const privateKey = this.readEnv('FIREBASE_PRIVATE_KEY', 'FCM_PRIVATE_KEY');
 
     const configured = Boolean(
       serviceAccountPath || (projectId && clientEmail && privateKey),
@@ -50,17 +67,22 @@ export class NotificationService {
       return true;
     }
 
-    const serviceAccountPath =
-      process.env.FIREBASE_SERVICE_ACCOUNT_PATH ||
-      process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    const serviceAccountPath = this.resolveServiceAccountPath();
 
-    const projectId = process.env.FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    const projectId = this.readEnv('FIREBASE_PROJECT_ID', 'FCM_PROJECT_ID');
+    const clientEmail = this.readEnv('FIREBASE_CLIENT_EMAIL', 'FCM_CLIENT_EMAIL');
+    const privateKey = this.readEnv('FIREBASE_PRIVATE_KEY', 'FCM_PRIVATE_KEY')?.replace(/\\n/g, '\n');
 
     try {
       if (admin.apps.length === 0) {
         if (serviceAccountPath) {
+          if (!existsSync(serviceAccountPath)) {
+            console.error(
+              `[NotificationService] Firebase service account file not found: ${serviceAccountPath}`,
+            );
+            return false;
+          }
+
           // eslint-disable-next-line @typescript-eslint/no-var-requires
           const serviceAccount = require(serviceAccountPath);
           admin.initializeApp({

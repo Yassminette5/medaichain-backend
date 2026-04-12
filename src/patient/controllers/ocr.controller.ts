@@ -40,7 +40,7 @@ export class OcrController {
                 },
             }),
             fileFilter: (req, file, cb) => {
-                if (!file.mimetype.match(/\/(jpg|jpeg|png|pdf)$/)) {
+                if (!file.mimetype.match(/\/(jpg|jpeg|png|pdf|webp)$/)) {
                     return cb(
                         new HttpException(
                             'Only image and PDF files are allowed!',
@@ -88,6 +88,58 @@ export class OcrController {
                 HttpStatus.INTERNAL_SERVER_ERROR,
             );
         }
+    }
+
+    /**
+     * Stockage fichier uniquement (pas d’OCR / Tesseract) — pour ordonnances scannées, PDF, etc.
+     */
+    @Post('upload-raw')
+    @UseInterceptors(
+        FileInterceptor('file', {
+            storage: diskStorage({
+                destination: './uploads',
+                filename: (req, file, cb) => {
+                    const randomName = Array(32)
+                        .fill(null)
+                        .map(() => Math.round(Math.random() * 16).toString(16))
+                        .join('');
+                    cb(null, `${randomName}${extname(file.originalname)}`);
+                },
+            }),
+            fileFilter: (req, file, cb) => {
+                if (!file.mimetype.match(/\/(jpg|jpeg|png|pdf|webp)$/)) {
+                    return cb(
+                        new HttpException(
+                            'Only image and PDF files are allowed!',
+                            HttpStatus.BAD_REQUEST,
+                        ),
+                        false,
+                    );
+                }
+                cb(null, true);
+            },
+            limits: {
+                fileSize: 10 * 1024 * 1024,
+            },
+        }),
+    )
+    async uploadRaw(@UploadedFile() file: Express.Multer.File, @Req() req) {
+        if (!file) {
+            throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
+        }
+        const userId = req.user?.userId;
+        if (!userId) {
+            throw new HttpException('User ID not found in token', HttpStatus.UNAUTHORIZED);
+        }
+        return {
+            message: 'File stored',
+            data: {
+                filename: file.filename,
+                mimeType: file.mimetype,
+                originalName: file.originalname,
+                userId,
+            },
+        };
     }
 
     @Post('save')

@@ -97,7 +97,8 @@ export class CreateMedicationRequestFormDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => FormMedicationDto)
-  medications: FormMedicationDto[];
+  @IsOptional()
+  medications?: FormMedicationDto[];
 
   @IsBoolean()
   @IsOptional()

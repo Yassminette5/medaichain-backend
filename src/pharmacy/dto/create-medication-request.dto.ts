@@ -50,7 +50,8 @@ export class CreateMedicationRequestDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => MedicationItemDto)
-  medications: MedicationItemDto[];
+  @IsOptional()
+  medications?: MedicationItemDto[];
 
   @IsBoolean()
   @IsOptional()

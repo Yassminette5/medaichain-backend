@@ -16,18 +16,27 @@ BASE_DIR = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / "model.pkl"
 MODEL_ML_API_PATH = BASE_DIR / "model_ml_api.pkl"
 
-if not MODEL_PATH.is_file():
-    raise FileNotFoundError(
-        f"Fichier modèle introuvable : {MODEL_PATH}. "
-        "Placez votre fichier joblib model.pkl dans le dossier medaichain-backend/python/."
-    )
-
 app = Flask(__name__)
-model = joblib.load(MODEL_PATH)
 
+# Load models if available, otherwise run in mock mode
+model = None
 model_ml_api = None
+
+if MODEL_PATH.is_file():
+    try:
+        model = joblib.load(MODEL_PATH)
+    except Exception as e:
+        print(f"⚠️  Failed to load model.pkl: {e}")
+else:
+    print(f"ℹ️  model.pkl not found at {MODEL_PATH} — running in mock mode")
+
 if MODEL_ML_API_PATH.is_file():
-    model_ml_api = joblib.load(MODEL_ML_API_PATH)
+    try:
+        model_ml_api = joblib.load(MODEL_ML_API_PATH)
+    except Exception as e:
+        print(f"⚠️  Failed to load model_ml_api.pkl: {e}")
+else:
+    print(f"ℹ️  model_ml_api.pkl not found at {MODEL_ML_API_PATH} — optional")
 
 # Mots-clés dans la note → acceptation automatique (sans tenir compte d’un abonnement)
 URGENCY_KEYWORDS = (
@@ -56,9 +65,10 @@ def health():
         {
             "status": "ok",
             "service": "ml_predict",
+            "mode": "mock" if model is None else "production",
             "models": {
-                "tier": "model.pkl",
-                "ml_api": "model_ml_api.pkl" if model_ml_api is not None else None,
+                "tier": "model.pkl" if model is not None else "⚠️ missing (running mock)",
+                "ml_api": "model_ml_api.pkl" if model_ml_api is not None else "⚠️ missing (optional)",
             },
         }
     )
@@ -66,6 +76,18 @@ def health():
 
 @app.route("/predict", methods=["POST"])
 def predict():
+    if model is None:
+        return (
+            jsonify({
+                "error": "Model not loaded",
+                "result": "⏳ En attente",
+                "subscription_tier": "free",
+                "tier_score": 0,
+                "mode": "mock (model.pkl missing)"
+            }),
+            200,
+        )
+    
     data = request.json or {}
 
     note = data.get("note", "")
@@ -112,15 +134,22 @@ def predict_ml_api():
     Comportement aligné sur ml-api/app.py (2ᵉ modèle joblib).
     """
     if model_ml_api is None:
-        return (
-            jsonify(
-                {
-                    "error": "model_ml_api.pkl introuvable",
-                    "hint": "Copiez ml-api/model.pkl vers medaichain-backend/python/model_ml_api.pkl",
-                }
-            ),
-            503,
-        )
+        # Check if it's just missing, or never tried to load
+        if MODEL_ML_API_PATH.is_file():
+            error_msg = "Failed to load model_ml_api.pkl"
+            hints = "Check file format or reinstall dependencies"
+        else:
+            error_msg = "model_ml_api.pkl not found"
+            hints = "Copiez ml-api/model.pkl vers medaichain-backend/python/model_ml_api.pkl"
+        
+        return jsonify({
+            "error": error_msg,
+            "result": "⏳ En attente",
+            "prediction": 0,
+            "mode": "mock (model missing)",
+            "hint": hints
+        }), 200
+    
     try:
         data = request.get_json()
         if data is None:

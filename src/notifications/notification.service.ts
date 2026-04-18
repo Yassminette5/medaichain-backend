@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import * as admin from 'firebase-admin';
+import { existsSync } from 'fs';
+import { isAbsolute, resolve } from 'path';
+import { User, UserDocument } from '../users/schemas/user.schema';
 import {
   Notification,
   NotificationDocument,
@@ -12,7 +16,100 @@ export class NotificationService {
   constructor(
     @InjectModel(Notification.name)
     private notificationModel: Model<NotificationDocument>,
+    @InjectModel(User.name)
+    private userModel: Model<UserDocument>,
   ) {}
+
+  private firebaseReady = false;
+
+  private readEnv(primaryKey: string, legacyKey?: string): string | undefined {
+    return process.env[primaryKey] || (legacyKey ? process.env[legacyKey] : undefined);
+  }
+
+  private resolveServiceAccountPath(): string | undefined {
+    const rawPath =
+      this.readEnv('FIREBASE_SERVICE_ACCOUNT_PATH', 'FCM_SERVICE_ACCOUNT_PATH') ||
+      process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+    if (!rawPath) {
+      return undefined;
+    }
+
+    // Build output runs from dist/, so resolve relative paths from project root.
+    return isAbsolute(rawPath) ? rawPath : resolve(process.cwd(), rawPath);
+  }
+
+  getFirebaseStatus(): {
+    configured: boolean;
+    initialized: boolean;
+    projectId?: string;
+    usingServiceAccountPath: boolean;
+  } {
+    const serviceAccountPath = this.resolveServiceAccountPath();
+    const projectId = this.readEnv('FIREBASE_PROJECT_ID', 'FCM_PROJECT_ID');
+    const clientEmail = this.readEnv('FIREBASE_CLIENT_EMAIL', 'FCM_CLIENT_EMAIL');
+    const privateKey = this.readEnv('FIREBASE_PRIVATE_KEY', 'FCM_PRIVATE_KEY');
+
+    const configured = Boolean(
+      serviceAccountPath || (projectId && clientEmail && privateKey),
+    );
+
+    return {
+      configured,
+      initialized: this.firebaseReady || admin.apps.length > 0,
+      projectId,
+      usingServiceAccountPath: Boolean(serviceAccountPath),
+    };
+  }
+
+  private initFirebaseIfNeeded(): boolean {
+    if (this.firebaseReady) {
+      return true;
+    }
+
+    const serviceAccountPath = this.resolveServiceAccountPath();
+
+    const projectId = this.readEnv('FIREBASE_PROJECT_ID', 'FCM_PROJECT_ID');
+    const clientEmail = this.readEnv('FIREBASE_CLIENT_EMAIL', 'FCM_CLIENT_EMAIL');
+    const privateKey = this.readEnv('FIREBASE_PRIVATE_KEY', 'FCM_PRIVATE_KEY')?.replace(/\\n/g, '\n');
+
+    try {
+      if (admin.apps.length === 0) {
+        if (serviceAccountPath) {
+          if (!existsSync(serviceAccountPath)) {
+            console.error(
+              `[NotificationService] Firebase service account file not found: ${serviceAccountPath}`,
+            );
+            return false;
+          }
+
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const serviceAccount = require(serviceAccountPath);
+          admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+          });
+        } else {
+          if (!projectId || !clientEmail || !privateKey) {
+            return false;
+          }
+
+          admin.initializeApp({
+            credential: admin.credential.cert({
+              projectId,
+              clientEmail,
+              privateKey,
+            }),
+          });
+        }
+      }
+      this.firebaseReady = true;
+    } catch (error) {
+      console.error('[NotificationService] Firebase init error:', error);
+      this.firebaseReady = false;
+    }
+
+    return this.firebaseReady;
+  }
 
   async createNotification(data: {
     userId: string;
@@ -124,5 +221,63 @@ export class NotificationService {
       })
       .sort({ createdAt: -1 })
       .exec();
+  }
+
+  async sendPushToUser(data: {
+    userId: string;
+    title: string;
+    message: string;
+    payload?: Record<string, string>;
+  }): Promise<void> {
+    try {
+      if (!this.initFirebaseIfNeeded()) {
+        console.warn(
+          '[NotificationService] Push skipped (Firebase not configured). Set FIREBASE_SERVICE_ACCOUNT_PATH (recommended) or FIREBASE_PROJECT_ID/FIREBASE_CLIENT_EMAIL/FIREBASE_PRIVATE_KEY.',
+        );
+        return;
+      }
+
+      const user = await this.userModel.findById(data.userId).exec();
+      if (!user) {
+        console.warn(
+          `[NotificationService] Push skipped (user not found): ${data.userId}`,
+        );
+        return;
+      }
+      if (!user?.fcmToken) {
+        console.warn(
+          `[NotificationService] Push skipped (missing fcmToken) for user: ${data.userId}`,
+        );
+        return;
+      }
+
+      await admin.messaging().send({
+        token: user.fcmToken,
+        notification: {
+          title: data.title,
+          body: data.message,
+        },
+        android: {
+          priority: 'high',
+          notification: {
+            channelId: 'ordonnance_channel',
+            sound: 'default',
+          },
+        },
+        apns: {
+          headers: {
+            'apns-priority': '10',
+          },
+          payload: {
+            aps: {
+              sound: 'default',
+            },
+          },
+        },
+        data: data.payload || {},
+      });
+    } catch (error) {
+      console.error('[NotificationService] Push send error:', error);
+    }
   }
 }

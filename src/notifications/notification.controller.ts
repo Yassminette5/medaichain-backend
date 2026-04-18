@@ -55,6 +55,14 @@ export class NotificationController {
 
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
+  @Get('unread-count')
+  @ApiOperation({ summary: 'Obtenir le nombre de notifications non lues (compat)' })
+  async getUnreadCountCompat(@Request() req) {
+    return this.getUnreadCount(req);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @Put(':id/read')
   @ApiOperation({ summary: 'Marquer une notification comme lue' })
   async markAsRead(@Param('id') id: string) {

@@ -37,8 +37,8 @@ export class RequestedMedication {
   @Prop({ required: true })
   name: string;
 
-  @Prop({ required: true })
-  dosage: string;
+  @Prop()
+  dosage?: string;
 
   @Prop({ required: true, min: 1 })
   quantity: number;

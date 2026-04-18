@@ -6,6 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { HealthController } from './health/health.controller';
 
 // Clinique modules
 import { ClinicManagementModule } from './clinic-management/clinic-management.module';
@@ -37,6 +38,9 @@ import { AccessRequestsModule } from './access-requests/access-requests.module';
 
 // Appel vidéo (Agora) médecin-patient
 import { VideoCallModule } from './video-call/video-call.module';
+// IA pour les médecins (Analyses locales)
+import { DoctorAiModule } from './doctor-ai/doctor-ai.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
@@ -72,8 +76,9 @@ import { VideoCallModule } from './video-call/video-call.module';
     PrescriptionsModule,
     AccessRequestsModule,
     VideoCallModule,
+    DoctorAiModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, HealthController],
   providers: [AppService],
 })
 export class AppModule { }

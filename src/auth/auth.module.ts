@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { MailService } from './mail.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { SeedService } from './seed.service';
 import { UsersModule } from '../users/users.module';
 import { ProfilesModule } from '../profiles/profiles.module';
 
@@ -26,7 +27,7 @@ import { ProfilesModule } from '../profiles/profiles.module';
         }),
     ],
     controllers: [AuthController],
-    providers: [AuthService, MailService, JwtStrategy],
+    providers: [AuthService, MailService, JwtStrategy, SeedService],
     exports: [AuthService],
 })
 export class AuthModule { }

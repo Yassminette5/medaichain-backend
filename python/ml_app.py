@@ -26,17 +26,17 @@ if MODEL_PATH.is_file():
     try:
         model = joblib.load(MODEL_PATH)
     except Exception as e:
-        print(f"⚠️  Failed to load model.pkl: {e}")
+        print(f"[ERROR] Failed to load model.pkl: {e}")
 else:
-    print(f"ℹ️  model.pkl not found at {MODEL_PATH} — running in mock mode")
+    print(f"[INFO] model.pkl not found at {MODEL_PATH} - running in mock mode")
 
 if MODEL_ML_API_PATH.is_file():
     try:
         model_ml_api = joblib.load(MODEL_ML_API_PATH)
     except Exception as e:
-        print(f"⚠️  Failed to load model_ml_api.pkl: {e}")
+        print(f"[ERROR] Failed to load model_ml_api.pkl: {e}")
 else:
-    print(f"ℹ️  model_ml_api.pkl not found at {MODEL_ML_API_PATH} — optional")
+    print(f"[INFO] model_ml_api.pkl not found at {MODEL_ML_API_PATH} - optional")
 
 # Mots-clés dans la note → acceptation automatique (sans tenir compte d’un abonnement)
 URGENCY_KEYWORDS = (
@@ -67,8 +67,8 @@ def health():
             "service": "ml_predict",
             "mode": "mock" if model is None else "production",
             "models": {
-                "tier": "model.pkl" if model is not None else "⚠️ missing (running mock)",
-                "ml_api": "model_ml_api.pkl" if model_ml_api is not None else "⚠️ missing (optional)",
+                "tier": "model.pkl" if model is not None else "[MISSING] (mock)",
+                "ml_api": "model_ml_api.pkl" if model_ml_api is not None else "[MISSING] (optional)",
             },
         }
     )
@@ -80,7 +80,7 @@ def predict():
         return (
             jsonify({
                 "error": "Model not loaded",
-                "result": "⏳ En attente",
+                "result": "En attente",
                 "subscription_tier": "free",
                 "tier_score": 0,
                 "mode": "mock (model.pkl missing)"
@@ -144,7 +144,7 @@ def predict_ml_api():
         
         return jsonify({
             "error": error_msg,
-            "result": "⏳ En attente",
+            "result": "En attente",
             "prediction": 0,
             "mode": "mock (model missing)",
             "hint": hints
@@ -166,7 +166,7 @@ def predict_ml_api():
         allergies = str(allergies).strip()
 
         if note == "":
-            return jsonify({"result": "⏳ En attente"})
+            return jsonify({"result": "En attente"})
 
         # Urgence explicite dans le texte → acceptée (indépendamment du forfait)
         if _note_indique_urgence(note):
@@ -193,7 +193,7 @@ def predict_ml_api():
         )
 
         pred = model_ml_api.predict(df)[0]
-        result = "Acceptée automatiquement" if pred == 1 else "⏳ En attente"
+        result = "Acceptée automatiquement" if pred == 1 else "En attente"
 
         return jsonify({"result": result, "prediction": int(pred)})
     except Exception as e:

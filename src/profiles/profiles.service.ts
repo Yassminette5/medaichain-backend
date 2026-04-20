@@ -155,7 +155,7 @@ export class ProfilesService {
         city?: string;
         wilaya?: string;
     }): Promise<DoctorProfileDocument[]> {
-        const query: any = { isVerified: true };
+        const query: any = {};
 
         if (filters.speciality) query.speciality = new RegExp(filters.speciality, 'i');
         if (filters.city) query.city = new RegExp(filters.city, 'i');

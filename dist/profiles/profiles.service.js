@@ -108,7 +108,7 @@ let ProfilesService = class ProfilesService {
         return profile;
     }
     async searchDoctors(filters) {
-        const query = { isVerified: true };
+        const query = {};
         if (filters.speciality)
             query.speciality = new RegExp(filters.speciality, 'i');
         if (filters.city)

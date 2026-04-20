@@ -26,7 +26,7 @@ export class DoctorAiController {
     private readonly prescriptionsService: PrescriptionsService,
     private readonly patientAnalysisService: PatientAnalysisService,
     private readonly subscriptionService: SubscriptionService,
-  ) {}
+  ) { }
 
   @Get('status')
   @Roles(UserRole.MEDECIN, UserRole.ADMIN)
@@ -107,10 +107,18 @@ export class DoctorAiController {
   @UseGuards(SubscriptionGuard)
   @ApiOperation({ summary: 'Analyser une analyse patient spécifique via l\'IA' })
   async analyzePatientAnalysis(@Param('id') id: string, @Body('context') context?: string) {
+    console.log(`[DoctorAiController] Demande d'analyse via ID: ${id}`);
     const doc = await this.patientAnalysisService.findById(id);
+
+    if (!doc || !doc.resultFile) {
+      console.error(`[DoctorAiController] Erreur: document ou resultFile manquant pour l'ID ${id}`);
+       throw new HttpException('Fichier introuvable en Base de Données.', HttpStatus.NOT_FOUND);
+    }
+
     const filePath = path.join(process.cwd(), doc.resultFile);
     if (!fs.existsSync(filePath)) {
-      throw new HttpException('Fichier introuvable sur le serveur.', HttpStatus.NOT_FOUND);
+      console.error(`[DoctorAiController] ERREUR CRITIQUE 404: Le fichier physique n'existe pas -> ${filePath}`);
+      throw new HttpException(`Fichier introuvable sur le serveur à l'adresse: ${filePath}`, HttpStatus.NOT_FOUND);
     }
     const fileBuffer = fs.readFileSync(filePath);
 
@@ -124,7 +132,7 @@ export class DoctorAiController {
       const mimeType = doc.resultFile.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
       const base64Image = fileBuffer.toString('base64');
       const imageBase64 = `data:${mimeType};base64,${base64Image}`;
-      
+
       console.log('Transfert de l\'image au service IA pour analyse OCR optimisée');
       return this.doctorAiService.analyzeReport(imageBase64, context);
     }
@@ -142,9 +150,9 @@ export class DoctorAiController {
     // create prescription if provided
     let prescription = null;
     if (body.createAiPrescriptionDto && Object.keys(body.createAiPrescriptionDto).length > 0) {
-        prescription = await this.prescriptionsService.create(body.createAiPrescriptionDto, doctorId);
+      prescription = await this.prescriptionsService.create(body.createAiPrescriptionDto, doctorId);
     }
-    
+
     // update patient analysis
     const updated = await this.patientAnalysisService.updateStatusAndAdvice(analysisId, {
       status: 'revise',
@@ -152,7 +160,7 @@ export class DoctorAiController {
       aiAdvice: body.advice,
       prescriptionId: prescription ? prescription._id.toString() : undefined
     });
-    
+
     return { success: true, prescription, analysis: updated };
   }
 }

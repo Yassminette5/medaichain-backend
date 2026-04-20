@@ -230,14 +230,11 @@ export class ProfilesService {
         is24Hours?: boolean;
         hasDelivery?: boolean;
     }): Promise<PharmacyProfileDocument[]> {
-        const query: any = { isVerified: true };
+        console.log('[ProfilesService] Fetching all pharmacies (filters ignored for now)');
+        const pharmacies = await this.pharmacyModel.find().exec();
+        console.log(`[ProfilesService] searchPharmacies returned ${pharmacies.length} pharmacies`);
 
-        if (filters.city) query.city = new RegExp(filters.city, 'i');
-        if (filters.wilaya) query.wilaya = new RegExp(filters.wilaya, 'i');
-        if (filters.is24Hours) query.is24Hours = true;
-        if (filters.hasDelivery) query.hasDelivery = true;
-
-        return this.pharmacyModel.find(query).exec();
+        return pharmacies;
     }
 
     // ========== RECHERCHER LABS ==========

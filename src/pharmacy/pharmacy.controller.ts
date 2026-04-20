@@ -309,7 +309,12 @@ export class PharmacyController {
         },
       }),
       fileFilter: (req, file, callback) => {
-        if (!file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
+        const allowedMime = /\/(jpg|jpeg|png|gif)$/;
+        const allowedExt = /\.(jpg|jpeg|png|gif)$/i;
+        const mimetypeValid = typeof file.mimetype === 'string' && allowedMime.test(file.mimetype);
+        const extensionValid = typeof file.originalname === 'string' && allowedExt.test(file.originalname);
+
+        if (!mimetypeValid && !extensionValid) {
           return callback(
             new BadRequestException(
               'Seules les images sont autorisées (jpg, png, gif)',
@@ -317,6 +322,7 @@ export class PharmacyController {
             false,
           );
         }
+
         callback(null, true);
       },
       limits: { fileSize: 5 * 1024 * 1024 },
@@ -408,9 +414,11 @@ export class PharmacyController {
     @Query('is24Hours') _is24Hours?: string,
     @Query('hasDelivery') _hasDelivery?: string,
   ) {
+    console.log(`[PharmacyController] GET /pharmacy/list/all called with city=${_city} wilaya=${_wilaya} is24Hours=${_is24Hours} hasDelivery=${_hasDelivery}`);
     // TODO: Re-enable and validate server-side filters (city/wilaya/is24Hours/hasDelivery)
     // once nearby ranking/filter UX is finalized on mobile.
     const pharmacies = await this.profilesService.searchPharmacies({});
+    console.log(`[PharmacyController] Returning ${pharmacies.length} pharmacies`);
 
     return pharmacies.map((pharmacy: any) => ({
       ...pharmacy.toObject(),

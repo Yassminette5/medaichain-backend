@@ -59,7 +59,7 @@ export class Medication {
 
 @Schema({ timestamps: true })
 export class MedicalRecord {
-    @Prop({ type: Types.ObjectId, ref: 'Clinic', required: true })
+    @Prop({ type: Types.ObjectId, ref: 'Clinic', required: false })
     clinicId: Types.ObjectId;
 
     @Prop({ type: Types.ObjectId, ref: 'User', required: true })
@@ -125,6 +125,28 @@ export class MedicalRecord {
 
     @Prop()
     followUpNotes: string; // Instructions de suivi
+
+    // IA - Prédiction d'Adhérence au traitement
+    @Prop()
+    adherenceRiskScore: number; // Probabilité en %
+
+    @Prop()
+    adherenceRiskStatus: string; // "RISQUE_FAIBLE" ou "RISQUE_ELEVÉ_ABANDON"
+
+    @Prop({ default: false })
+    requiresFollowUpCall: boolean; // Si True, déclenche une tâche pour la clinique
+
+    @Prop([String])
+    riskFactors: string[]; // Ex: ["Âge avancé", "3 comorbidités"]
+
+    @Prop()
+    aiRecommendation: string; // Recommandation IA personnalisée
+
+    @Prop()
+    aiConfidence: number; // Confiance du modèle en %
+
+    @Prop()
+    lastAiAnalysisDate: Date;
 
     // Notes
     @Prop()

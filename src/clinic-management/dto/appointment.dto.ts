@@ -39,6 +39,36 @@ export class CreateAppointmentDto {
     @IsOptional()
     @IsString()
     source?: string;
+
+    // ── Champs IA (No-Show Prediction) ──
+    @ApiPropertyOptional({ description: 'Âge du patient', example: 45 })
+    @IsOptional()
+    patientAge?: number;
+
+    @ApiPropertyOptional({ description: 'Genre du patient (M/F)', example: 'F' })
+    @IsOptional()
+    @IsString()
+    patientGender?: string;
+
+    @ApiPropertyOptional({ description: 'Hypertension (0 ou 1)', example: 0 })
+    @IsOptional()
+    hipertension?: number;
+
+    @ApiPropertyOptional({ description: 'Diabète (0 ou 1)', example: 0 })
+    @IsOptional()
+    diabetes?: number;
+
+    @ApiPropertyOptional({ description: 'Alcoolisme (0 ou 1)', example: 0 })
+    @IsOptional()
+    alcoholism?: number;
+
+    @ApiPropertyOptional({ description: 'Handicap (0 ou 1)', example: 0 })
+    @IsOptional()
+    handcap?: number;
+
+    @ApiPropertyOptional({ description: 'SMS reçu (0 ou 1)', example: 1 })
+    @IsOptional()
+    smsReceived?: number;
 }
 
 export class UpdateAppointmentDto {

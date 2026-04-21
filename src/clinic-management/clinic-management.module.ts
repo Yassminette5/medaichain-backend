@@ -8,6 +8,7 @@ import { Appointment, AppointmentSchema } from './schemas/appointment.schema';
 import { Admission, AdmissionSchema } from './schemas/admission.schema';
 import { MedicalRecord, MedicalRecordSchema } from './schemas/medical-record.schema';
 import { Invoice, InvoiceSchema } from './schemas/invoice.schema';
+import { ClinicConfig, ClinicConfigSchema } from './schemas/clinic-config.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { ProfilesModule } from '../profiles/profiles.module';
 import { AuthModule } from '../auth/auth.module';
@@ -22,6 +23,7 @@ import { NotificationModule } from '../notifications/notification.module';
             { name: Admission.name, schema: AdmissionSchema },
             { name: MedicalRecord.name, schema: MedicalRecordSchema },
             { name: Invoice.name, schema: InvoiceSchema },
+            { name: ClinicConfig.name, schema: ClinicConfigSchema },
             { name: User.name, schema: UserSchema },
         ]),
         ProfilesModule,

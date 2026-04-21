@@ -52,6 +52,15 @@ export class Appointment {
 
     @Prop({ default: 'clinic' })
     source: string; // 'clinic' ou 'mobile'
+
+    @Prop({ required: false })
+    noShowProbability: number; // Probabilité d'absence générée par l'IA % (ex: 85.5)
+
+    @Prop({ required: false })
+    riskLevel: string; // 'faible' | 'modere' | 'eleve'
+
+    @Prop({ type: [String], required: false })
+    aiRecommendations: string[]; // Recommandations cliniques générées par l'IA
 }
 
 export const AppointmentSchema = SchemaFactory.createForClass(Appointment);

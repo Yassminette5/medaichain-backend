@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsArray, IsEnum, IsDateString, IsNumber, ValidateNested } from 'class-validator';
+import { IsString, IsOptional, IsArray, IsEnum, IsDateString, IsNumber, ValidateNested, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 import { RecordType } from '../schemas/medical-record.schema';
 
@@ -134,6 +134,18 @@ export class CreateMedicalRecordDto {
     @ApiPropertyOptional({ description: 'Instructions de suivi' })
     @IsOptional() @IsString()
     followUpNotes?: string;
+
+    @ApiPropertyOptional({ description: 'Probabilité IA que le patient abandonne le traitement (%)' })
+    @IsOptional() @IsNumber()
+    adherenceRiskScore?: number;
+
+    @ApiPropertyOptional({ description: 'Statut du risque IA' })
+    @IsOptional() @IsString()
+    adherenceRiskStatus?: string;
+
+    @ApiPropertyOptional({ description: 'Déclenche une alarme pour appeler le patient' })
+    @IsOptional() @IsBoolean()
+    requiresFollowUpCall?: boolean;
 
     @ApiPropertyOptional({ description: 'Notes du médecin' })
     @IsOptional() @IsString()

@@ -18,6 +18,7 @@ import { ProfilesModule } from './profiles/profiles.module';
 import { PatientModule } from './patient/patient.module';
 import { MedicinesModule } from './medicines/medicines.module';
 import { AppointmentsModule } from './appointments/appointments.module';
+import { AiModule } from './ai/ai.module';
 
 // Fedibenman modules (Pharmacie, Delivery, Notifications)
 import { PharmacyModule } from './pharmacy/pharmacy.module';
@@ -67,6 +68,7 @@ import { DoctorAiModule } from './doctor-ai/doctor-ai.module';
     PatientModule,
     MedicinesModule,
     AppointmentsModule,
+    AiModule,
     PharmacyModule,
     DeliveryModule,
     NotificationModule,

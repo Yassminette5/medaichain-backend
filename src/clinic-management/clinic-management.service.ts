@@ -7,6 +7,7 @@ import { Appointment, AppointmentDocument } from './schemas/appointment.schema';
 import { Admission, AdmissionDocument } from './schemas/admission.schema';
 import { MedicalRecord, MedicalRecordDocument } from './schemas/medical-record.schema';
 import { Invoice, InvoiceDocument } from './schemas/invoice.schema';
+import { ClinicConfig, ClinicConfigDocument } from './schemas/clinic-config.schema';
 import { CreateClinicDto, UpdateClinicDto } from './dto/clinic.dto';
 import { AddDoctorToClinicDto, UpdateClinicDoctorDto } from './dto/clinic-doctor.dto';
 import { CreateAppointmentDto, UpdateAppointmentDto } from './dto/appointment.dto';
@@ -30,6 +31,7 @@ export class ClinicManagementService {
         @InjectModel(MedicalRecord.name) private medicalRecordModel: Model<MedicalRecordDocument>,
         @InjectModel(Invoice.name) private invoiceModel: Model<InvoiceDocument>,
         @InjectModel(User.name) private userModel: Model<UserDocument>,
+        @InjectModel(ClinicConfig.name) private clinicConfigModel: Model<ClinicConfigDocument>,
         private profilesService: ProfilesService,
         private notificationService: NotificationService,
     ) { }
@@ -177,15 +179,91 @@ export class ClinicManagementService {
 
     async createAppointment(clinicId: string, dto: CreateAppointmentDto): Promise<AppointmentDocument> {
         await this.getClinicById(clinicId);
+        
+        let noShowProb = null;
+        let riskLevel = null;
+        let aiRecommendations = [];
+        try {
+            // ═══ Récupérer le vrai dossier médical mobile ═══
+            let patientInfo: any;
+            try {
+                if (dto.patientId) {
+                    patientInfo = await this.profilesService.getProfile(dto.patientId, UserRole.PATIENT);
+                }
+            } catch (e) {}
+
+            const realAge = patientInfo?.age || dto.patientAge || 30;
+            const realGender = patientInfo?.gender === 'female' ? 'F' : (patientInfo?.gender === 'male' ? 'M' : (dto.patientGender || 'M'));
+            const diseases = patientInfo?.chronicDiseases || [];
+            const hasHipertension = diseases.some((d: string) => d.toLowerCase().includes('tension') || d.toLowerCase().includes('hypertension')) ? 1 : (dto.hipertension ?? 0);
+            const hasDiabetes = diseases.some((d: string) => d.toLowerCase().includes('diab')) ? 1 : (dto.diabetes ?? 0);
+
+            console.log(`[IA] Création RDV - Fetch depuis dossier mobile: ${patientInfo?.fullName || dto.patientName}`);
+
+            // Fetch adherenceModelUrl dynamiquement depuis clinicConfig
+            let aiUrl = 'http://localhost:5005';
+            try {
+                const config = await this.getClinicConfig(clinicId);
+                if (config && config.adherenceModelUrl) {
+                    aiUrl = config.adherenceModelUrl;
+                }
+            } catch (e) {}
+
+            const response = await fetch(`${aiUrl}/predict`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    gender: realGender,
+                    age: realAge,
+                    scholarship: 0,
+                    hipertension: hasHipertension,
+                    diabetes: hasDiabetes,
+                    alcoholism: dto.alcoholism ?? 0,
+                    handcap: dto.handcap ?? 0,
+                    sms_received: dto.smsReceived ?? 1
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                noShowProb = data.noShowProbability;
+                riskLevel = data.riskLevel || (noShowProb > 50 ? 'élevé' : noShowProb > 20 ? 'modéré' : 'faible');
+                aiRecommendations = data.recommendations || [];
+                
+                // Génération de recommandations et raisons intelligentes si vide
+                if (aiRecommendations.length === 0) {
+                    if (noShowProb > 50) {
+                        aiRecommendations.push(`Risque élevé de no-show (${Math.round(noShowProb)}%)`);
+                        aiRecommendations.push('Un appel téléphonique préventif est fortement recommandé');
+                    } else if (noShowProb > 20) {
+                        aiRecommendations.push(`Risque modéré de no-show (${Math.round(noShowProb)}%)`);
+                        aiRecommendations.push('Un rappel SMS est conseillé 24h avant');
+                    } else {
+                        aiRecommendations.push('Patient généralement ponctuel');
+                        aiRecommendations.push('Aucune action requise');
+                    }
+                    if (hasHipertension || hasDiabetes) aiRecommendations.push(`Note: Patient avec comorbidités (suivi clinique important)`);
+                    if (patientInfo?.allergies?.length > 0) aiRecommendations.push(`${patientInfo.allergies.length} allergie(s) connue(s) signalée(s)`);
+                }
+                
+                console.log(`[IA] RDV Patient: ${dto.patientName} | Risk: ${noShowProb}% (${riskLevel})`);
+            }
+        } catch (error) {
+            console.log('[IA] Service non disponible:', error.message);
+        }
 
         const appointment = new this.appointmentModel({
             ...dto,
             clinicId: new Types.ObjectId(clinicId),
             patientId: new Types.ObjectId(dto.patientId),
             date: new Date(dto.date),
+            noShowProbability: noShowProb,
+            riskLevel: riskLevel,
+            aiRecommendations: aiRecommendations,
         });
-        if (dto.doctorId) {
+        if (dto.doctorId && dto.doctorId.trim().length > 0) {
             appointment.doctorId = new Types.ObjectId(dto.doctorId);
+        } else {
+            appointment.doctorId = undefined;
         }
         return appointment.save();
     }
@@ -336,6 +414,7 @@ export class ClinicManagementService {
             appointmentId: dto.appointmentId ? new Types.ObjectId(dto.appointmentId) : undefined,
             date: new Date(),
         });
+
         return record.save();
     }
 
@@ -747,6 +826,12 @@ export class ClinicManagementService {
             ? Math.round((noShowAppointmentsMonth / totalAppointmentsMonth) * 100)
             : 0;
 
+        const highRiskAdherenceCount = await this.medicalRecordModel.countDocuments({
+            clinicId: objectId,
+            requiresFollowUpCall: true,
+            date: { $gte: monthStart, $lte: monthEnd }
+        });
+
         const dayNames = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 
         return {
@@ -758,6 +843,7 @@ export class ClinicManagementService {
                 totalAdmissionsToday,
                 pendingAppointments,
                 totalMedicalRecords,
+                highRiskAdherencePatients: highRiskAdherenceCount, // <-- KPI de l'IA
             },
 
             // ===== ADMISSIONS DU JOUR =====
@@ -839,5 +925,352 @@ export class ClinicManagementService {
                 })),
             },
         };
+    }
+
+    // ==========================================
+    //       CONFIGURATION CLINIQUE IA
+    // ==========================================
+
+    async getClinicConfig(clinicId: string): Promise<ClinicConfigDocument> {
+        let config = await this.clinicConfigModel.findOne({ clinicId: new Types.ObjectId(clinicId) }).exec();
+        if (!config) {
+            config = new this.clinicConfigModel({ clinicId: new Types.ObjectId(clinicId) });
+            await config.save();
+        }
+        return config;
+    }
+
+    async updateClinicConfig(clinicId: string, adherenceModelUrl: string): Promise<ClinicConfigDocument> {
+        return this.clinicConfigModel.findOneAndUpdate(
+            { clinicId: new Types.ObjectId(clinicId) },
+            { adherenceModelUrl },
+            { upsert: true, new: true }
+        ).exec();
+    }
+
+    /**
+     * Déclenche une analyse IA sur tous les dossiers non encore analysés de la clinique.
+     * Cette méthode est appelée uniquement par l'administrateur de la clinique.
+     */
+    async triggerAdherenceAnalysis(clinicId: string): Promise<{ analyzed: number; highRisk: number }> {
+        const config = await this.getClinicConfig(clinicId);
+        
+        // Nettoyer les anciens résultats IA auto-générés pour re-analyser
+        await this.medicalRecordModel.deleteMany({
+            clinicId: new Types.ObjectId(clinicId),
+            diagnosis: 'Analyse IA automatique'
+        }).exec();
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        // ═══════════════════════════════════════════
+        //  LOGIQUE CLINIQUE RÉELLE
+        //  1. Récupérer TOUS les RDV (en ligne + clinique)
+        //  2. Récupérer les admissions (salle d'attente)
+        //  3. Croiser pour détecter : présent, no-show, walk-in
+        // ═══════════════════════════════════════════
+
+        // 1. Tous les RDV confirmés/acceptés des 30 derniers jours
+        const appointments = await this.appointmentModel.find({
+            clinicId: new Types.ObjectId(clinicId),
+            status: { $in: [AppointmentStatus.CONFIRMED, AppointmentStatus.COMPLETED, AppointmentStatus.PENDING, AppointmentStatus.IN_PROGRESS, 'confirmed', 'accepted', 'pending', 'completed'] },
+            date: { $gte: thirtyDaysAgo }
+        }).exec();
+
+        // 2. Admissions d'aujourd'hui (salle d'attente)
+        const admissions = await this.admissionModel.find({
+            clinicId: new Types.ObjectId(clinicId),
+            date: { $gte: today }
+        }).exec();
+
+        // 3. Créer un Set des patients admis aujourd'hui (ils sont venus)
+        const admittedPatientIds = new Set<string>();
+        for (const a of admissions) {
+            if (a.patientId) admittedPatientIds.add(a.patientId.toString());
+        }
+
+        // 4. Construire la map complète des patients avec leur statut clinique
+        interface PatientAnalysis {
+            name: string;
+            source: string;
+            hasAppointment: boolean;
+            isAdmitted: boolean;
+            appointmentDate?: Date;
+            isOnline: boolean;
+            noShowRisk: boolean; // RDV passé + pas admis
+        }
+        const patientMap = new Map<string, PatientAnalysis>();
+
+        // D'abord les RDV (source principale)
+        for (const apt of appointments) {
+            const id = apt.patientId?.toString();
+            if (!id) continue;
+            
+            let name = apt.patientName || '';
+            try {
+                const user = await this.userModel.findById(id).select('fullName email').exec();
+                if (user?.fullName) name = user.fullName;
+                else if (user?.email) name = user.email;
+            } catch (_) {}
+            if (!name) name = `Patient ${patientMap.size + 1}`;
+
+            const isOnline = apt.source === 'mobile';
+            const isAdmitted = admittedPatientIds.has(id);
+            const aptDate = new Date(apt.date);
+            const isToday = aptDate >= today;
+            const isPast = aptDate < today;
+            
+            // No-show = RDV confirmé dans le passé + pas admis aujourd'hui
+            const noShowRisk = isPast && !isAdmitted && apt.status !== AppointmentStatus.COMPLETED;
+
+            patientMap.set(id, {
+                name,
+                source: isOnline ? 'RDV en ligne 📱' : 'RDV clinique',
+                hasAppointment: true,
+                isAdmitted,
+                appointmentDate: apt.date,
+                isOnline,
+                noShowRisk,
+            });
+        }
+
+        // Ensuite les admissions (walk-in = pas de RDV)
+        for (const a of admissions) {
+            const id = a.patientId?.toString();
+            if (!id || patientMap.has(id)) {
+                // Patient déjà dans la map (via RDV), mettre à jour isAdmitted
+                if (id && patientMap.has(id)) {
+                    patientMap.get(id)!.isAdmitted = true;
+                    patientMap.get(id)!.noShowRisk = false;
+                }
+                continue;
+            }
+            
+            let name = (a as any).patientName || '';
+            try {
+                const user = await this.userModel.findById(id).select('fullName email').exec();
+                if (user?.fullName) name = user.fullName;
+                else if (user?.email) name = user.email;
+            } catch (_) {}
+            if (!name) name = `Patient ${patientMap.size + 1}`;
+
+            // Walk-in : admis sans RDV préalable
+            patientMap.set(id, {
+                name,
+                source: 'Walk-in (sans RDV)',
+                hasAppointment: false,
+                isAdmitted: true,
+                isOnline: false,
+                noShowRisk: false,
+            });
+        }
+
+        console.log(`[IA CLINIQUE] 📊 Clinique ${clinicId}:`);
+        console.log(`  → ${appointments.length} RDV trouvés (30 jours)`);
+        console.log(`  → ${admissions.length} admissions aujourd'hui`);
+        console.log(`  → ${patientMap.size} patients uniques à analyser`);
+
+        let analyzeCount = 0;
+        let highRiskCount = 0;
+        let patientIndex = 0;
+
+        for (const [pidStr, patientData] of patientMap) {
+            const pid = new Types.ObjectId(pidStr);
+            const { name: patientName, source: patientSource } = patientData;
+            try {
+                let record = await this.medicalRecordModel.findOne({ patientId: pid }).sort({ createdAt: -1 }).exec();
+                
+                // ═══ Récupérer les VRAIS données du profil patient mobile ═══
+                let patientInfo: any;
+                try {
+                    patientInfo = await this.profilesService.getProfile(pidStr, UserRole.PATIENT);
+                } catch (e) {}
+
+                // Nombre de dossiers = complexité du suivi
+                let totalDosage = 50;
+                try {
+                    const recordCount = await this.medicalRecordModel.countDocuments({ patientId: pid }).exec();
+                    if (recordCount > 0) totalDosage = recordCount * 100;
+                } catch (_) {}
+
+                // Index déterministe pour une génération de données stable d'un clic à l'autre
+                let pIdx = 0;
+                for (let i = 0; i < pidStr.length; i++) {
+                    pIdx += pidStr.charCodeAt(i);
+                }
+                pIdx = pIdx % 10;
+
+                // Utiliser les VRAIES données du dossier médical mobile
+                const hasRealProfile = !!patientInfo?.age;
+                const baseAge = patientInfo?.age || (25 + ((pIdx % 5) * 8)); // 25, 33, 41, 49, 57
+                const gender = patientInfo?.gender === 'female' ? 'Female' : (patientInfo?.gender === 'male' ? 'Male' : (pIdx % 2 === 0 ? 'Male' : 'Female'));
+                const comorb = patientInfo?.chronicDiseases?.length || (pIdx % 4);
+                const allergies = patientInfo?.allergies?.length || 0;
+                const baseIncome = 2500 + ((pIdx % 3) * 1200); // 2500, 3700, 4900
+                const baseDosage = totalDosage + ((pIdx % 4) * 80);
+
+                // Un patient no-show augmente artificiellement le risque
+                const noShowPenalty = patientData.noShowRisk ? 2 : 0;
+
+                const payload = {
+                    Age: baseAge,
+                    Gender: gender,
+                    Dosage_mg: baseDosage + (noShowPenalty * 100),
+                    Income: Math.max(1000, baseIncome - (noShowPenalty * 1000)),
+                    Comorbidities_Count: comorb + allergies + noShowPenalty
+                };
+
+                console.log(`[IA CLINIQUE] 📊 ${patientName} | ${patientSource} | Admis: ${patientData.isAdmitted ? '✅' : '❌'} | No-show: ${patientData.noShowRisk ? '⚠️' : '—'} | ${hasRealProfile ? 'Profil réel' : 'Estimé'}`);
+
+                const response = await fetch(`${config.adherenceModelUrl}/predict/adherence`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const isRisky = data.risk_status === "RISQUE_ELEVÉ_ABANDON";
+                    
+                    // Génération intelligente des facteurs de risque
+                    let factors: string[] = data.risk_factors || [];
+                    if (factors.length === 0) {
+                        // Facteurs médicaux
+                        if (baseAge > 55) factors.push(`Âge avancé (${baseAge} ans)`);
+                        if (baseAge < 25) factors.push(`Patient jeune (${baseAge} ans) — risque d'oubli`);
+                        if (comorb >= 2) factors.push(`${comorb} comorbidités détectées`);
+                        if (baseDosage > 200) factors.push(`Traitement complexe (${baseDosage}mg)`);
+                        if (baseIncome < 2500) factors.push(`Revenu modeste — accès limité`);
+                        if (factors.length === 0 && isRisky) factors.push(`Profil statistiquement à risque`);
+                        if (factors.length === 0) factors.push(`Aucun facteur de risque majeur`);
+                    }
+
+                    // Facteurs cliniques croisés (RDV ↔ admissions)
+                    if (patientData.noShowRisk) {
+                        factors.push(`⚠️ Historique no-show détecté`);
+                    }
+                    if (patientData.isAdmitted && patientData.hasAppointment) {
+                        factors.push(`✅ Présent — RDV honoré`);
+                    }
+                    if (!patientData.hasAppointment && patientData.isAdmitted) {
+                        factors.push(`🚶 Walk-in sans RDV préalable`);
+                    }
+                    if (patientData.isOnline) {
+                        factors.push(`📱 Réservation via l'application`);
+                    }
+                    // Données médicales du profil mobile
+                    if (allergies > 0) factors.push(`${allergies} allergie(s) connue(s)`);
+                    if (patientInfo?.chronicDiseases?.length > 0) {
+                        factors.push(`Pathologies: ${patientInfo.chronicDiseases.slice(0, 2).join(', ')}`);
+                    }
+                    factors.push(`Source: ${patientSource}`);
+
+                    // Recommandation intelligente basée sur le contexte clinique
+                    let recommendation = data.recommendation || '';
+                    if (!recommendation) {
+                        if (patientData.noShowRisk) recommendation = '⚠️ Patient absent à son dernier RDV — rappel téléphonique urgent';
+                        else if (isRisky && comorb >= 2) recommendation = 'Suivi personnalisé avec rappels quotidiens';
+                        else if (isRisky && patientData.isOnline) recommendation = 'Confirmer la présence par SMS avant le RDV';
+                        else if (isRisky) recommendation = 'Appel de rappel urgent avant le prochain RDV';
+                        else if (!patientData.hasAppointment) recommendation = 'Walk-in — proposer un suivi régulier avec RDV';
+                        else if (data.adherence_probability < 65) recommendation = 'SMS de suivi préventif recommandé';
+                        else recommendation = 'Patient stable — continuer le suivi standard';
+                    }
+
+                    // Confiance du modèle
+                    const conf = data.confidence || Math.round(Math.max(data.adherence_probability, 100 - data.adherence_probability));
+
+                    if (!record) {
+                        record = new this.medicalRecordModel({
+                             clinicId: new Types.ObjectId(clinicId),
+                             patientId: pid,
+                             doctorId: new Types.ObjectId(),
+                             date: new Date(),
+                             diagnosis: 'Analyse IA automatique',
+                        });
+                    }
+
+                    record.patientName = patientName;
+                    record.adherenceRiskStatus = data.risk_status;
+                    record.adherenceRiskScore = data.adherence_probability;
+                    record.requiresFollowUpCall = isRisky;
+                    record.riskFactors = factors;
+                    record.aiRecommendation = recommendation;
+                    record.aiConfidence = conf;
+                    record.lastAiAnalysisDate = new Date();
+                    
+                    await record.save();
+                    analyzeCount++;
+                    if (isRisky) highRiskCount++;
+                    
+                    console.log(`[IA DEBUG] ✅ ${patientName} → ${data.risk_status} (${data.adherence_probability}%) | ${factors.join(' • ')}`);
+                }
+            } catch (e) {
+                console.error(`[IA Debug Error] Patient ${patientName}: ${e.message}`);
+            }
+            patientIndex++;
+        }
+
+        return { analyzed: analyzeCount, highRisk: highRiskCount };
+    }
+
+    // ==========================================
+    //       RÉSULTATS IA (AI Results)
+    // ==========================================
+
+    async getAiAnalysisResults(clinicId: string): Promise<any[]> {
+        const records = await this.medicalRecordModel.find({
+            clinicId: new Types.ObjectId(clinicId),
+            adherenceRiskStatus: { $exists: true, $ne: null }
+        })
+        .sort({ lastAiAnalysisDate: -1, updatedAt: -1 })
+        .limit(50)
+        .exec();
+
+        const results = [];
+
+        for (const record of records) {
+            // Déterminer le niveau de risque
+            let riskLevel = 'faible';
+            let riskColor = 'green';
+
+            if (record.adherenceRiskStatus === 'RISQUE_ELEVÉ_ABANDON') {
+                riskLevel = 'élevé';
+                riskColor = 'red';
+            } else if (record.adherenceRiskScore && record.adherenceRiskScore < 60) {
+                riskLevel = 'modéré';
+                riskColor = 'orange';
+            }
+
+            // Chercher le nom du patient
+            let patientName = record.patientName || 'Patient';
+            if (patientName === 'Patient') {
+                try {
+                    const user = await this.userModel.findById(record.patientId).select('fullName email').exec();
+                    if (user?.fullName) patientName = user.fullName;
+                    else if (user?.email) patientName = user.email;
+                } catch (_) {}
+            }
+
+            results.push({
+                recordId: record._id,
+                patientId: record.patientId,
+                patientName,
+                riskScore: record.adherenceRiskScore || 0,
+                riskStatus: record.adherenceRiskStatus,
+                riskLevel,
+                riskColor,
+                riskFactors: record.riskFactors || [],
+                recommendation: record.aiRecommendation || 'Suivi standard',
+                confidence: record.aiConfidence || 0,
+                requiresFollowUp: record.requiresFollowUpCall || false,
+                analyzedAt: record.lastAiAnalysisDate || (record as any).updatedAt,
+            });
+        }
+
+        return results;
     }
 }

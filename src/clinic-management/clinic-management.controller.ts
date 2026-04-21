@@ -589,4 +589,48 @@ export class ClinicManagementController {
     async getDashboard(@Param('clinicId') clinicId: string) {
         return this.service.getDashboardStats(clinicId);
     }
+
+    // ==========================================
+    //       CENTRALISATION IA (CLINIQUE)
+    // ==========================================
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
+    @ApiBearerAuth()
+    @Get('my/ai-config')
+    @ApiOperation({ summary: 'Obtenir la configuration IA de la clinique' })
+    async getMyAiConfig(@Request() req) {
+        const clinic = await this.service.getOrCreateClinicByOwner(req.user.userId);
+        return this.service.getClinicConfig(clinic._id.toString());
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
+    @ApiBearerAuth()
+    @Post('my/ai-config')
+    @ApiOperation({ summary: 'Mettre à jour l\'URL du modèle IA' })
+    async updateMyAiConfig(@Request() req, @Body('url') url: string) {
+        const clinic = await this.service.getOrCreateClinicByOwner(req.user.userId);
+        return this.service.updateClinicConfig(clinic._id.toString(), url);
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
+    @ApiBearerAuth()
+    @Post('my/ai-analysis')
+    @ApiOperation({ summary: 'Déclencher l\'analyse IA sur les dossiers récents' })
+    async triggerMyAiAnalysis(@Request() req) {
+        const clinic = await this.service.getOrCreateClinicByOwner(req.user.userId);
+        return this.service.triggerAdherenceAnalysis(clinic._id.toString());
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CLINIQUE)
+    @ApiBearerAuth()
+    @Get('my/ai-results')
+    @ApiOperation({ summary: 'Récupérer les résultats d\'analyse IA des patients' })
+    async getMyAiResults(@Request() req) {
+        const clinic = await this.service.getOrCreateClinicByOwner(req.user.userId);
+        return this.service.getAiAnalysisResults(clinic._id.toString());
+    }
 }

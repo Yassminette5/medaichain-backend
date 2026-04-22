@@ -8,6 +8,8 @@ export declare class AiService {
     getOrCreateConversation(userId: string, conversationId?: string): Promise<AiConversationDocument>;
     findAllConversations(userId: string): Promise<AiConversationDocument[]>;
     getConversationMessages(conversationId: string, userId: string): Promise<AiMessageDocument[]>;
+    private readonly aiMicroserviceUrl;
     addMessage(conversationId: string, userId: string, data: Partial<AiMessage>): Promise<AiMessageDocument>;
     deleteConversation(conversationId: string, userId: string): Promise<void>;
+    proxyToAi(endpoint: string, body: any, isStream?: boolean): Promise<any>;
 }

@@ -13,4 +13,7 @@ export declare class ProfilesController {
     searchDoctors(speciality?: string, city?: string, wilaya?: string): Promise<import("./schemas/doctor-profile.schema").DoctorProfileDocument[]>;
     searchPharmacies(city?: string, wilaya?: string, is24Hours?: boolean, hasDelivery?: boolean): Promise<import("./schemas/pharmacy-profile.schema").PharmacyProfileDocument[]>;
     searchLabs(localisation?: string, categorie?: string): Promise<import("./schemas/lab-profile.schema").LabProfileDocument[]>;
+    getMySummaryUrl(req: any): Promise<{
+        url: string;
+    }>;
 }

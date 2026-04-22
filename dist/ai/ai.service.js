@@ -22,6 +22,8 @@ let AiService = class AiService {
     constructor(conversationModel, messageModel) {
         this.conversationModel = conversationModel;
         this.messageModel = messageModel;
+        this.aiMicroserviceUrl = 'https://2cc1-34-169-50-143.ngrok-free.app';
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
     }
     async getOrCreateConversation(userId, conversationId) {
         if (conversationId) {
@@ -61,6 +63,44 @@ let AiService = class AiService {
     }
     async deleteConversation(conversationId, userId) {
         await this.conversationModel.findOneAndUpdate({ _id: new mongoose_2.Types.ObjectId(conversationId), userId: new mongoose_2.Types.ObjectId(userId) }, { isActive: false }).exec();
+    }
+    async proxyToAi(endpoint, body, isStream = false) {
+        const url = `${this.aiMicroserviceUrl}${endpoint}`;
+        console.log(`[AiService] Proxying to AI: ${url}`);
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                },
+                body: JSON.stringify(body),
+            });
+            if (!response.ok) {
+                const errText = await response.text();
+                console.error(`[AiService] Error from AI Microservice (Status ${response.status}): ${errText}`);
+                throw new Error(`AI Microservice error: ${response.status} ${response.statusText}`);
+            }
+            if (isStream) {
+                return response.body;
+            }
+            const contentType = response.headers.get('content-type');
+            if (contentType && (contentType.includes('image') || contentType.includes('application/octet-stream'))) {
+                const buffer = await response.arrayBuffer();
+                return Buffer.from(buffer);
+            }
+            const result = await response.json();
+            return result;
+        }
+        catch (error) {
+            console.error(`[AiService] CRITICAL: Failed to connect to AI Microservice at ${url}`);
+            console.error(`[AiService] Reason: ${error.message}`);
+            if (error.cause) {
+                console.error(`[AiService] Underlying Cause:`, error.cause);
+            }
+            throw new Error(`Connectivity Error: Could not reach the AI microservice. Ensure Kaggle is running and the URL in NestJS is correct.`);
+        }
     }
 };
 exports.AiService = AiService;

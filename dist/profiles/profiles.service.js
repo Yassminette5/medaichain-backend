@@ -137,6 +137,11 @@ let ProfilesService = class ProfilesService {
             query.categorie = new RegExp(filters.categorie, 'i');
         return this.labModel.find(query).exec();
     }
+    async getSummaryUrl(userId) {
+        return {
+            url: `https://medaichain.com/records/${userId}`,
+        };
+    }
 };
 exports.ProfilesService = ProfilesService;
 exports.ProfilesService = ProfilesService = __decorate([

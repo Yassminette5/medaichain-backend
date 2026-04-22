@@ -128,4 +128,11 @@ export class ProfilesController {
     ) {
         return this.profilesService.searchLabs({ localisation, categorie });
     }
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @Get('me/summary-url')
+    @ApiOperation({ summary: 'Obtenir l\'URL du résumé médical pour le QR Code' })
+    async getMySummaryUrl(@Request() req) {
+        return this.profilesService.getSummaryUrl(req.user.userId);
+    }
 }

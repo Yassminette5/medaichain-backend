@@ -17,9 +17,45 @@ const common_1 = require("@nestjs/common");
 const ai_service_1 = require("./ai.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const swagger_1 = require("@nestjs/swagger");
+const platform_express_1 = require("@nestjs/platform-express");
 let AiController = class AiController {
     constructor(aiService) {
         this.aiService = aiService;
+    }
+    async chat(data) {
+        return this.aiService.proxyToAi('/chat', data);
+    }
+    async searchMedicine(data) {
+        return this.aiService.proxyToAi('/medicine', data);
+    }
+    async generateQrCode(data, res) {
+        const buffer = await this.aiService.proxyToAi('/qrcode', data);
+        res.set('Content-Type', 'image/png');
+        res.send(buffer);
+    }
+    async analyze(file) {
+        const url = `${this.aiService['aiMicroserviceUrl']}/analyze`;
+        const formData = new FormData();
+        const blob = new Blob([new Uint8Array(file.buffer)], { type: file.mimetype });
+        formData.append('file', blob, file.originalname);
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'ngrok-skip-browser-warning': 'true',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                },
+                body: formData,
+            });
+            if (!response.ok) {
+                throw new Error(`AI Microservice error: ${response.statusText}`);
+            }
+            return await response.json();
+        }
+        catch (error) {
+            console.error(`[AiController] Analyze proxy failed: ${error.message}`);
+            throw error;
+        }
     }
     async getConversations(req) {
         return this.aiService.findAllConversations(req.user.userId);
@@ -38,6 +74,49 @@ let AiController = class AiController {
     }
 };
 exports.AiController = AiController;
+__decorate([
+    (0, common_1.Post)('chat'),
+    (0, swagger_1.ApiOperation)({ summary: 'Proxy pour le chat AI' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AiController.prototype, "chat", null);
+__decorate([
+    (0, common_1.Post)('medicine'),
+    (0, swagger_1.ApiOperation)({ summary: 'Proxy pour la recherche de médicaments' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AiController.prototype, "searchMedicine", null);
+__decorate([
+    (0, common_1.Post)('qrcode'),
+    (0, swagger_1.ApiOperation)({ summary: 'Proxy pour la génération de QR Code' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], AiController.prototype, "generateQrCode", null);
+__decorate([
+    (0, common_1.Post)('analyze'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    (0, swagger_1.ApiConsumes)('multipart/form-data'),
+    (0, swagger_1.ApiOperation)({ summary: 'Proxy pour l\'analyse d\'image' }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            type: 'object',
+            properties: {
+                file: { type: 'string', format: 'binary' },
+            },
+        },
+    }),
+    __param(0, (0, common_1.UploadedFile)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AiController.prototype, "analyze", null);
 __decorate([
     (0, common_1.Get)('conversations'),
     (0, swagger_1.ApiOperation)({ summary: 'Obtenir toutes les conversations AI' }),

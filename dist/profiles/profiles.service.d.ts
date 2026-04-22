@@ -36,4 +36,7 @@ export declare class ProfilesService {
         categorie?: string;
         analysisType?: string;
     }): Promise<LabProfileDocument[]>;
+    getSummaryUrl(userId: string): Promise<{
+        url: string;
+    }>;
 }

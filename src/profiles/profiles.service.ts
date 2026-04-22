@@ -194,4 +194,13 @@ export class ProfilesService {
 
         return this.labModel.find(query).exec();
     }
+
+    // ========== OBTENIR URL DU RÉSUMÉ (QR CODE) ==========
+    async getSummaryUrl(userId: string): Promise<{ url: string }> {
+        // En théorie, cet URL pointe vers une page web qui affiche le dossier médical résumé du patient.
+        // On utilise l'ID de l'utilisateur comme identifiant unique.
+        return {
+            url: `https://medaichain.com/records/${userId}`,
+        };
+    }
 }

@@ -55,6 +55,9 @@ let ProfilesController = class ProfilesController {
     async searchLabs(localisation, categorie) {
         return this.profilesService.searchLabs({ localisation, categorie });
     }
+    async getMySummaryUrl(req) {
+        return this.profilesService.getSummaryUrl(req.user.userId);
+    }
 };
 exports.ProfilesController = ProfilesController;
 __decorate([
@@ -166,6 +169,16 @@ __decorate([
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], ProfilesController.prototype, "searchLabs", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, common_1.Get)('me/summary-url'),
+    (0, swagger_1.ApiOperation)({ summary: 'Obtenir l\'URL du résumé médical pour le QR Code' }),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ProfilesController.prototype, "getMySummaryUrl", null);
 exports.ProfilesController = ProfilesController = __decorate([
     (0, swagger_1.ApiTags)('Profils'),
     (0, common_1.Controller)('profiles'),

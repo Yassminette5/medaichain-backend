@@ -1,9 +1,13 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Prescription, PrescriptionDocument } from './schemas/prescription.schema';
 import { NotificationService } from '../notifications/notification.service';
 import { NotificationType } from '../notifications/notification.schema';
+import { NftService } from '../nft/nft.service';
+import { UsersService } from '../users/users.service';
+import { UserRole } from '../users/schemas/user.schema';
+import { NftAssetType } from '../nft/schemas/nft-asset.schema';
 
 @Injectable()
 export class PrescriptionsService {
@@ -11,6 +15,8 @@ export class PrescriptionsService {
         @InjectModel(Prescription.name)
         private prescriptionModel: Model<PrescriptionDocument>,
         private notificationService: NotificationService,
+        private nftService: NftService,
+        private usersService: UsersService,
     ) { }
 
     // ========== CRÉER UNE ORDONNANCE (MÉDECIN) ==========
@@ -24,6 +30,12 @@ export class PrescriptionsService {
         });
 
         const saved = await prescription.save();
+
+        try {
+            await this.nftService.createForPrescription(saved);
+        } catch (error) {
+            console.error('[PrescriptionsService] Erreur creation NFT ordonnance:', error);
+        }
 
         // Notifier le patient (userId doit être une chaîne pour la notification)
         try {
@@ -136,5 +148,110 @@ export class PrescriptionsService {
         }
 
         await this.prescriptionModel.deleteOne({ _id: new Types.ObjectId(id) }).exec();
+    }
+
+    async shareWithPharmacy(
+        prescriptionId: string,
+        patientId: string,
+        pharmacyId: string,
+        expiresAt?: Date,
+    ) {
+        if (!Types.ObjectId.isValid(prescriptionId)) {
+            throw new NotFoundException('ID ordonnance invalide');
+        }
+
+        const prescription = await this.prescriptionModel.findById(prescriptionId).exec();
+        if (!prescription) {
+            throw new NotFoundException('Ordonnance non trouvée');
+        }
+
+        if (prescription.patientId.toString() !== patientId) {
+            throw new ForbiddenException('Vous ne pouvez pas partager cette ordonnance');
+        }
+
+        const pharmacyUser = await this.usersService.findById(pharmacyId);
+        if (!pharmacyUser || pharmacyUser.role !== UserRole.PHARMACIE) {
+            throw new BadRequestException('Pharmacie invalide');
+        }
+
+        const asset = await this.nftService.createForPrescription(prescription);
+        if (!asset) {
+            throw new BadRequestException('Wallet patient indisponible pour le partage');
+        }
+
+        try {
+            await this.nftService.ensureAssetMinted(
+                NftAssetType.PRESCRIPTION,
+                prescriptionId,
+            );
+        } catch (error) {
+            throw new BadRequestException('Mint on-chain échoué pour cette ordonnance');
+        }
+
+        return this.nftService.shareAsset({
+            assetType: NftAssetType.PRESCRIPTION,
+            assetId: prescriptionId,
+            ownerUserId: patientId,
+            entityUserId: pharmacyId,
+            expiresAt,
+        });
+    }
+
+    async revokeShareWithPharmacy(
+        prescriptionId: string,
+        patientId: string,
+        pharmacyId: string,
+    ) {
+        return this.nftService.revokeShare({
+            assetType: NftAssetType.PRESCRIPTION,
+            assetId: prescriptionId,
+            ownerUserId: patientId,
+            entityUserId: pharmacyId,
+        });
+    }
+
+    async listSharedForPharmacy(pharmacyId: string): Promise<PrescriptionDocument[]> {
+        const sharedIds = await this.nftService.listSharedAssetIdsOnChain({
+            assetType: NftAssetType.PRESCRIPTION,
+            entityUserId: pharmacyId,
+        });
+
+        if (!sharedIds.length) {
+            return [];
+        }
+
+        return this.prescriptionModel
+            .find({ _id: { $in: sharedIds.map((id) => new Types.ObjectId(id)) } })
+            .populate('doctorId', 'fullName email phone')
+            .populate('patientId', 'email phone')
+            .sort({ createdAt: -1 })
+            .exec();
+    }
+
+    async getSharedByPharmacy(prescriptionId: string, pharmacyId: string) {
+        const authorized = await this.nftService.isEntityAuthorized({
+            assetType: NftAssetType.PRESCRIPTION,
+            assetId: prescriptionId,
+            entityUserId: pharmacyId,
+        });
+
+        if (!authorized) {
+            throw new ForbiddenException('Accès non autorisé à cette ordonnance');
+        }
+
+        const asset = await this.nftService.getAssetByTypeAndId(
+            NftAssetType.PRESCRIPTION,
+            prescriptionId,
+        );
+        if (!asset) {
+            throw new ForbiddenException('NFT associé introuvable');
+        }
+
+        const onChainOk = await this.nftService.isAssetOnChainOwned(asset);
+        if (!onChainOk) {
+            throw new ForbiddenException('Ordonnance non disponible (NFT non on-chain)');
+        }
+
+        return this.findOne(prescriptionId);
     }
 }

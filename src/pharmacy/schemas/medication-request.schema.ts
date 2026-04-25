@@ -87,6 +87,24 @@ export class MedicationRequest extends Document {
 
   @Prop()
   deliveryConfirmedAt?: Date;
+
+  @Prop()
+  nftAssetId?: string;
+
+  @Prop()
+  nftTokenId?: string;
+
+  @Prop()
+  nftMintTxHash?: string;
+
+  @Prop()
+  nftContractAddress?: string;
+
+  @Prop()
+  nftChainId?: number;
+
+  @Prop()
+  patientPharmacyTxHash?: string;
 }
 
 export const MedicationRequestSchema = SchemaFactory.createForClass(MedicationRequest);

@@ -12,6 +12,7 @@ import * as bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { UsersService } from '../users/users.service';
 import { UserDocument, UserRole } from '../users/schemas/user.schema';
+import { WalletService } from '../wallet/wallet.service';
 import {
     RegisterDto,
     LoginDto,
@@ -33,6 +34,7 @@ export class AuthService {
         private mailService: MailService,
         @Inject(forwardRef(() => ProfilesService))
         private profilesService: ProfilesService,
+        private walletService: WalletService,
     ) { }
 
     // ========== INSCRIPTION ==========
@@ -52,6 +54,8 @@ export class AuthService {
         // Hasher le mot de passe
         const hashedPassword = await bcrypt.hash(registerDto.password, 10);
 
+        const walletFields = await this.createWalletFields();
+
         // Créer l'utilisateur
         const user = await this.usersService.create({
             email: registerDto.email,
@@ -59,6 +63,7 @@ export class AuthService {
             phone: registerDto.phone,
             role: registerDto.role,
             isProfileCompleted: false, // Sera mis à true après création du profil
+            ...walletFields,
         });
 
         // Créer le profil associé
@@ -329,6 +334,8 @@ export class AuthService {
 
         const hashedPassword = await bcrypt.hash(dto.password, 10);
 
+        const walletFields = await this.createWalletFields();
+
         // Créer utilisateur
         console.log(`[RegisterFromInvite] Création de l'utilisateur...`);
         let user;
@@ -339,6 +346,7 @@ export class AuthService {
                 phone: dto.phone,
                 role: role as any,
                 isProfileCompleted: true, // On considère complet après ce formulaire
+                ...walletFields,
             });
         } catch (error) {
             if (error.code === 11000 && error.keyPattern && error.keyPattern.phone) {
@@ -431,6 +439,8 @@ export class AuthService {
         const rawPassword = this.generateRandomPassword(12);
         const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
+        const walletFields = await this.createWalletFields();
+
         // Créer l'utilisateur
         const user = await this.usersService.create({
             email: dto.email,
@@ -438,6 +448,7 @@ export class AuthService {
             phone: dto.phone,
             role: dto.role,
             isProfileCompleted: false,
+            ...walletFields,
         });
 
         // Créer le profil associé selon le rôle
@@ -502,9 +513,22 @@ export class AuthService {
         return password;
     }
 
+    private async createWalletFields() {
+        const wallet = await this.walletService.createWallet();
+        return {
+            walletAddress: wallet.address,
+            walletChainId: wallet.chainId,
+            walletEncryptedPrivateKey: wallet.encryptedPrivateKey,
+            walletCreatedAt: wallet.createdAt,
+            walletRegistrationTxHash: wallet.walletRegistrationTxHash,
+            walletRegisteredOnChainAt: wallet.walletRegisteredOnChainAt,
+            walletOnChainRegistrationStatus: wallet.walletOnChainRegistrationStatus
+        };
+    }
+
     private async sanitizeUser(user: UserDocument) {
         const userObj = user.toObject();
-        const { password, resetPasswordToken, resetPasswordExpires, ...result } = userObj;
+        const { password, resetPasswordToken, resetPasswordExpires, walletEncryptedPrivateKey, ...result } = userObj;
         console.log(`[AuthService] Sanitizing user: ${result.email}, role: ${result.role} (type: ${typeof result.role})`);
 
         const mergedUser = {

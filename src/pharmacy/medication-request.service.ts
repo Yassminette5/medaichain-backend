@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
 import {
@@ -15,15 +15,25 @@ import { NotificationService } from '../notifications/notification.service';
 import { NotificationType } from '../notifications/notification.schema';
 import { ProfilesService } from '../profiles/profiles.service';
 import { PrescriptionAnalysisService } from './prescription-analysis.service';
+import { NftService } from '../nft/nft.service';
+import { UsersService } from '../users/users.service';
+import { WalletService } from '../wallet/wallet.service';
+import { WalletChainService } from '../wallet/wallet-chain.service';
 
 @Injectable()
 export class MedicationRequestService {
+  private readonly logger = new Logger(MedicationRequestService.name);
+
   constructor(
     @InjectModel(MedicationRequest.name)
     private medicationRequestModel: Model<MedicationRequest>,
     private notificationService: NotificationService,
     private profilesService: ProfilesService,
     private prescriptionAnalysisService: PrescriptionAnalysisService,
+    private nftService: NftService,
+    private usersService: UsersService,
+    private walletService: WalletService,
+    private walletChainService: WalletChainService,
   ) {}
 
   async getRequestsByPharmacy(
@@ -206,7 +216,72 @@ export class MedicationRequestService {
       );
     }
 
+    await this.tryCreateOnChainProofs(newRequest, resolvedPharmacyUserId, createDto);
+
     return newRequest;
+  }
+
+  private async tryCreateOnChainProofs(
+    request: MedicationRequest,
+    pharmacyUserId: string,
+    createDto: CreateMedicationRequestDto,
+  ): Promise<void> {
+    try {
+      const nftAsset = await this.nftService.createForMedicationRequest({
+        _id: request._id,
+        patientId: createDto.patientId,
+        pharmacyId: pharmacyUserId,
+        medications: request.medications,
+        requestDate: request.requestDate,
+        prescriptionImageUrl: request.prescriptionImageUrl,
+      });
+
+      if (!nftAsset) {
+        this.logger.warn(
+          `[MedicationRequestService] NFT asset not created for request ${request._id}`,
+        );
+      } else {
+        request.nftAssetId = nftAsset._id.toString();
+        request.nftTokenId = nftAsset.tokenId;
+        request.nftMintTxHash = nftAsset.txHash;
+        request.nftContractAddress = nftAsset.contractAddress;
+        request.nftChainId = nftAsset.chainId;
+      }
+    } catch (error) {
+      this.logger.error(
+        `[MedicationRequestService] NFT mint failed for request ${request._id}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
+
+    try {
+      const patientUser = await this.usersService.findById(createDto.patientId);
+      const pharmacyUser = await this.usersService.findById(pharmacyUserId);
+
+      if (!patientUser.walletEncryptedPrivateKey || !pharmacyUser.walletAddress) {
+        this.logger.warn(
+          `[MedicationRequestService] Missing wallet data for proof tx. patient=${createDto.patientId} pharmacy=${pharmacyUserId}`,
+        );
+      } else {
+        const patientPrivateKey = this.walletService.decryptPrivateKey(
+          patientUser.walletEncryptedPrivateKey,
+        );
+
+        const transfer = await this.walletChainService.sendProofTransaction(
+          patientPrivateKey,
+          pharmacyUser.walletAddress,
+        );
+
+        request.patientPharmacyTxHash = transfer.txHash;
+      }
+    } catch (error) {
+      this.logger.error(
+        `[MedicationRequestService] Patient->pharmacy proof tx failed for request ${request._id}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
+
+    await request.save();
   }
 
   private mergeMedications(

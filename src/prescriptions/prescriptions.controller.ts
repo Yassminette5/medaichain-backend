@@ -111,6 +111,67 @@ export class PrescriptionsController {
         return this.prescriptionsService.updateStatus(id, body.status);
     }
 
+    // ========== PARTAGER UNE ORDONNANCE AVEC UNE PHARMACIE (PATIENT) ==========
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.PATIENT)
+    @Post(':id/share')
+    @ApiOperation({ summary: 'Partager une ordonnance avec une pharmacie (Patient)' })
+    async shareWithPharmacy(
+        @Param('id') id: string,
+        @Body() body: { pharmacyId: string; expiresAt?: string },
+        @Request() req: any,
+    ) {
+        const patientId = req.user?.userId ?? req.user?.sub;
+        if (!patientId) throw new BadRequestException('Patient non identifié');
+        return this.prescriptionsService.shareWithPharmacy(
+            id,
+            String(patientId),
+            body.pharmacyId,
+            body.expiresAt ? new Date(body.expiresAt) : undefined,
+        );
+    }
+
+    // ========== RÉVOQUER LE PARTAGE D'UNE ORDONNANCE (PATIENT) ==========
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.PATIENT)
+    @Post(':id/revoke')
+    @ApiOperation({ summary: 'Révoquer le partage d\'une ordonnance (Patient)' })
+    async revokeShare(
+        @Param('id') id: string,
+        @Body() body: { pharmacyId: string },
+        @Request() req: any,
+    ) {
+        const patientId = req.user?.userId ?? req.user?.sub;
+        if (!patientId) throw new BadRequestException('Patient non identifié');
+        return this.prescriptionsService.revokeShareWithPharmacy(
+            id,
+            String(patientId),
+            body.pharmacyId,
+        );
+    }
+
+    // ========== ORDONNANCES PARTAGÉES (PHARMACIE) ==========
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.PHARMACIE)
+    @Get('shared')
+    @ApiOperation({ summary: 'Lister les ordonnances partagées avec la pharmacie' })
+    async getSharedPrescriptions(@Request() req: any) {
+        const pharmacyId = req.user?.userId ?? req.user?.sub;
+        if (!pharmacyId) return [];
+        return this.prescriptionsService.listSharedForPharmacy(String(pharmacyId));
+    }
+
+    // ========== ORDONNANCE PARTAGÉE DÉTAILLÉE (PHARMACIE) ==========
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.PHARMACIE)
+    @Get('shared/:id')
+    @ApiOperation({ summary: 'Obtenir le détail d\'une ordonnance partagée (Pharmacie)' })
+    async getSharedPrescription(@Param('id') id: string, @Request() req: any) {
+        const pharmacyId = req.user?.userId ?? req.user?.sub;
+        if (!pharmacyId) throw new BadRequestException('Pharmacie non identifiée');
+        return this.prescriptionsService.getSharedByPharmacy(id, String(pharmacyId));
+    }
+
     // ========== SUPPRIMER UNE ORDONNANCE (MÉDECIN) ==========
     @UseGuards(RolesGuard)
     @Roles(UserRole.MEDECIN)

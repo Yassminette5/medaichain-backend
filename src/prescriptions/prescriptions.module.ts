@@ -4,6 +4,8 @@ import { PrescriptionsController } from './prescriptions.controller';
 import { PrescriptionsService } from './prescriptions.service';
 import { Prescription, PrescriptionSchema } from './schemas/prescription.schema';
 import { NotificationModule } from '../notifications/notification.module';
+import { NftModule } from '../nft/nft.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
@@ -11,6 +13,8 @@ import { NotificationModule } from '../notifications/notification.module';
       { name: Prescription.name, schema: PrescriptionSchema },
     ]),
     NotificationModule,
+    NftModule,
+    UsersModule,
   ],
   controllers: [PrescriptionsController],
   providers: [PrescriptionsService],

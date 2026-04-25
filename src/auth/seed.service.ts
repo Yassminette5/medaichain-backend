@@ -3,12 +3,14 @@ import { UsersService } from '../users/users.service';
 import { ProfilesService } from '../profiles/profiles.service';
 import { UserRole } from '../users/schemas/user.schema';
 import * as bcrypt from 'bcryptjs';
+import { WalletService } from '../wallet/wallet.service';
 
 @Injectable()
 export class SeedService implements OnModuleInit {
     constructor(
         private usersService: UsersService,
         private profilesService: ProfilesService,
+        private walletService: WalletService,
     ) {}
 
     async onModuleInit() {
@@ -44,6 +46,7 @@ export class SeedService implements OnModuleInit {
 
                 if (!existingUser) {
                     const hashedPassword = await bcrypt.hash(userData.password, 10);
+                    const wallet = await this.walletService.createWallet();
                     await this.usersService.create({
                         email: userData.email,
                         password: hashedPassword,
@@ -51,6 +54,12 @@ export class SeedService implements OnModuleInit {
                         role: userData.role,
                         isProfileCompleted: true,
                         isEmailVerified: true,
+                        walletAddress: wallet.address,
+                        walletChainId: wallet.chainId,
+                        walletEncryptedPrivateKey: wallet.encryptedPrivateKey,
+                        walletCreatedAt: wallet.createdAt,
+                        walletRegistrationTxHash: wallet.walletRegistrationTxHash,
+                        walletRegisteredOnChainAt: wallet.walletRegisteredOnChainAt,
                     });
                     console.log(`✅ Test user created: ${userData.email}`);
                 } else {

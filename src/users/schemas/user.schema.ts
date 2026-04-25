@@ -10,6 +10,8 @@ export enum UserRole {
   ADMIN = 'admin',
 }
 
+
+
 export type UserDocument = User & Document;
 
 @Schema({ timestamps: true })
@@ -61,6 +63,30 @@ export class User {
 
   @Prop()
   fcmTokenUpdatedAt: Date;
+
+  @Prop({ unique: true, sparse: true })
+  walletAddress: string;
+
+  @Prop()
+  walletChainId: number;
+
+  @Prop()
+  walletEncryptedPrivateKey: string;
+
+  @Prop()
+  walletCreatedAt: Date;
+
+  @Prop()
+  walletExportedAt: Date;
+
+  @Prop()
+  walletRegistrationTxHash: string;
+
+  @Prop()
+  walletRegisteredOnChainAt: Date;
+
+  @Prop({ default: 'pending' })
+  walletOnChainRegistrationStatus: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

@@ -127,6 +127,7 @@ export class OcrMlService {
 			const response = await axios.post(url, form, {
 				headers: {
 					...form.getHeaders(),
+					'ngrok-skip-browser-warning': 'true',
 					...(userId ? { 'x-user-id': userId } : {}),
 				},
 				maxBodyLength: Infinity,
@@ -138,6 +139,27 @@ export class OcrMlService {
 				console.log('[OcrMlService] ✅ Flask OCR success');
 				return response.data;
 			}
+			
+			// Fallback interne: si /analyser n'existe pas, tenter /analyze
+			if (response.status === 404) {
+				console.log('[OcrMlService] 🔄 /analyser not found, trying /analyze...');
+				const altUrl = url.replace('/analyser', '/analyze');
+				const altResponse = await axios.post(altUrl, form, {
+					headers: {
+						...form.getHeaders(),
+						'ngrok-skip-browser-warning': 'true',
+						...(userId ? { 'x-user-id': userId } : {}),
+					},
+					maxBodyLength: Infinity,
+					timeout: 15000,
+					validateStatus: () => true,
+				});
+				if (altResponse.status >= 200 && altResponse.status < 300) {
+					console.log('[OcrMlService] ✅ Flask OCR success on /analyze');
+					return altResponse.data;
+				}
+			}
+			
 			throw new Error(`Flask OCR error ${response.status}`);
 		} catch (flaskErr: any) {
 			flaskError = flaskErr.message || 'unknown';

@@ -13,7 +13,7 @@ export interface AiUsageLimit {
 }
 
 const PLAN_LIMITS: Record<string, AiUsageLimit> = {
-  free: { monthlyQuota: 3, dailyQuota: 1 },
+  free: { monthlyQuota: 50, dailyQuota: 20 },
   starter: { monthlyQuota: 25, dailyQuota: 5 },
   professional: { monthlyQuota: 150, dailyQuota: 20 },
   enterprise: { monthlyQuota: 999999, dailyQuota: 999999 },

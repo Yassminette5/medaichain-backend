@@ -101,6 +101,30 @@ export class ProfilesController {
     }
 
     // ================================================================
+    // IA CONFIGURATION MÉDECIN
+    // ================================================================
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.MEDECIN)
+    @ApiBearerAuth()
+    @Get('doctor/ai-config')
+    @ApiOperation({ summary: 'Obtenir l\'URL Ngrok de l\'IA (Médecin)' })
+    async getDoctorAiConfig(@Request() req) {
+        const profile = await this.profilesService.getProfile(req.user.userId, UserRole.MEDECIN);
+        return { url: profile?.aiModelUrl || process.env.KAGGLE_AI_URL };
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.MEDECIN)
+    @ApiBearerAuth()
+    @Put('doctor/ai-config')
+    @ApiOperation({ summary: 'Enregistrer l\'URL Ngrok de l\'IA en base de données' })
+    async updateDoctorAiConfig(@Request() req, @Body('url') url: string) {
+        await this.profilesService.upsertDoctorProfile(req.user.userId, { aiModelUrl: url } as any);
+        return { message: 'Configuration IA mise à jour en base de données', url };
+    }
+
+    // ================================================================
     // PUT /profiles/patient  — Modifier profil patient
     // ================================================================
     @UseGuards(JwtAuthGuard, RolesGuard)

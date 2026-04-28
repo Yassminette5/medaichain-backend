@@ -6,7 +6,7 @@ import { Model, Types } from 'mongoose';
 import { OCRData } from '../entities/ocr.entity';
 import { AuthService } from '../../auth/auth.service';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import Tesseract from 'tesseract.js';
+import * as Tesseract from 'tesseract.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -25,7 +25,7 @@ export class OcrService implements OnModuleInit {
             throw new Error('GEMINI_API_KEY is not set in environment variables');
         }
         this.genAI = new GoogleGenerativeAI(apiKey);
-        this.textModel = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        this.textModel = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     }
 
     async onModuleInit() {

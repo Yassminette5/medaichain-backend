@@ -264,7 +264,7 @@ return this.runInference(truncatedText, context);
       
       const { GoogleGenerativeAI } = require('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(apiKey);
-      const aiModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const aiModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
       
       const prompt = `Tu es un assistant médical IA expert. Analyse ce texte médical extrait par OCR et fournis un diagnostic structuré.
 

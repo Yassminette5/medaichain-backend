@@ -8,7 +8,7 @@ export interface AnalyzedMedication {
 @Injectable()
 export class PrescriptionAnalysisService {
   private static readonly KAGGLE_API_BASE_URL =
-    'https://af54-34-76-96-42.ngrok-free.app';
+    process.env.PHARMACY_KAGGLE_URL || 'https://5201-34-6-75-171.ngrok-free.app';
 
   private static readonly LOGGED_ERROR_FLAG = Symbol.for(
     'medaichain.prescriptionAnalysis.logged',

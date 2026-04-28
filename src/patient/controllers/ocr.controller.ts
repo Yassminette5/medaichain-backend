@@ -124,6 +124,55 @@ export class OcrController {
         }
     }
 
+    @Post('save-after-upload')
+    async saveAfterUpload(@Body() body: any, @Req() req) {
+        try {
+            const userId = req.user?.userId;
+            if (!userId) {
+                throw new HttpException('User ID not found in token', HttpStatus.UNAUTHORIZED);
+            }
+
+            const uploadData = body.uploadData || body;
+            const documentCategory = body.documentCategory || 'lab_analysis';
+            const titleOverride = body.titleOverride;
+
+            // Extract filename from uploadData
+            const filename = uploadData.filename
+                || uploadData.image_name
+                || uploadData.originalName
+                || `doc-${Date.now()}.jpg`;
+
+            // Build extracted data for saving
+            const extractedFields: Record<string, any> = {
+                title: titleOverride || uploadData.title || 'Document Médical',
+                description: uploadData.description || '',
+                documentCategory,
+            };
+
+            // Merge details if present
+            if (uploadData.details) {
+                extractedFields.details = uploadData.details;
+            }
+
+            const savedData = await this.ocrService.saveExtractedData(
+                extractedFields,
+                userId,
+                filename,
+            );
+
+            return {
+                message: 'Document saved successfully',
+                data: savedData,
+            };
+        } catch (error) {
+            console.error('Error saving document (save-after-upload):', error);
+            throw new HttpException(
+                error.message || 'Error saving document',
+                HttpStatus.INTERNAL_SERVER_ERROR,
+            );
+        }
+    }
+
     @Get('documents')
     async getAllDocuments(@Req() req) {
         try {

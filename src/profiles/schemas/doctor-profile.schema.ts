@@ -61,6 +61,9 @@ export class DoctorProfile {
 
     @Prop()
     verifiedAt: Date;
+
+    @Prop({ description: 'URL du modèle IA (Ngrok)' })
+    aiModelUrl: string;
 }
 
 export const DoctorProfileSchema = SchemaFactory.createForClass(DoctorProfile);

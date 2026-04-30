@@ -13,6 +13,7 @@ import {
     BadRequestException,
     Res,
     NotFoundException,
+    ForbiddenException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiConsumes, ApiBody } from '@nestjs/swagger';
@@ -22,6 +23,8 @@ import { Response } from 'express';
 import { existsSync } from 'fs';
 import { LabService } from './lab.service';
 import { AnalysisResultsService } from './analysis-results.service';
+import { ProfilesService } from '../profiles/profiles.service';
+import { AccessRequestsService } from '../access-requests/access-requests.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -34,7 +37,15 @@ export class LabController {
     constructor(
         private readonly labService: LabService,
         private readonly analysisResultsService: AnalysisResultsService,
+        private readonly profilesService: ProfilesService,
+        private readonly accessRequestsService: AccessRequestsService,
     ) {}
+
+    private async canDoctorAccessPatient(doctorId: string, patientId: string): Promise<boolean> {
+        const tempAccess = await this.profilesService.isPatientTemporaryAccessActive(patientId);
+        if (tempAccess) return true;
+        return this.accessRequestsService.hasAcceptedAccess(doctorId, patientId);
+    }
 
     // ========== LISTE PUBLIQUE DES LABORATOIRES ==========
     @Get()
@@ -309,6 +320,12 @@ export class LabController {
     async getAnalysisResultsByPatient(@Request() req, @Param('patientId') patientId: string) {
         if (req.user.role === UserRole.PATIENT && req.user.userId !== patientId) {
             throw new NotFoundException('Accès non autorisé');
+        }
+        if (req.user.role === UserRole.MEDECIN) {
+            const allowed = await this.canDoctorAccessPatient(req.user.userId, patientId);
+            if (!allowed) {
+                throw new ForbiddenException('Accès temporaire requis pour consulter ce patient');
+            }
         }
         return this.analysisResultsService.getAnalysisResultsByPatientId(patientId);
     }

@@ -34,9 +34,9 @@ export class AccessRequestsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.MEDECIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Liste des patients dont le médecin a accepté l\'accès (pour dossier et analyses)' })
+  @ApiOperation({ summary: 'Liste des patients accessibles au médecin (acceptés + accès temporaire) pour dossiers et analyses' })
   async getAcceptedPatientsForDoctor(@Request() req) {
-    return this.accessRequestsService.findAcceptedPatientsByDoctor(req.user.userId);
+    return this.accessRequestsService.findAccessiblePatientsByDoctor(req.user.userId);
   }
 
   @Patch(':id/accept')

@@ -16,6 +16,7 @@ export class SeedService implements OnModuleInit {
     async onModuleInit() {
         await this.createTestUsers();
         await this.createTestPharmacyProfile();
+        await this.createTestLabProfile();
     }
 
     private async createTestUsers() {
@@ -37,6 +38,12 @@ export class SeedService implements OnModuleInit {
                 password: 'password123',
                 phone: '+213555000003',
                 role: UserRole.MEDECIN,
+            },
+            {
+                email: 'lab@test.com',
+                password: 'password123',
+                phone: '+213555000004',
+                role: UserRole.CENTRE_ANALYSE,
             },
         ];
 
@@ -122,6 +129,51 @@ export class SeedService implements OnModuleInit {
             console.log('✅ Pharmacy profile seeded for pharmacy@test.com');
         } catch (error) {
             console.error('❌ Error seeding pharmacy profile:', error.message || error);
+        }
+    }
+
+    private async createTestLabProfile() {
+        try {
+            const labUser = await this.usersService.findByEmail('lab@test.com');
+            if (!labUser) {
+                console.warn('⚠️ Lab user not found, skipping lab profile seeding.');
+                return;
+            }
+
+            const existingProfile = await this.profilesService.getProfile(
+                labUser._id.toString(),
+                UserRole.CENTRE_ANALYSE,
+            );
+
+            if (existingProfile) {
+                console.log('ℹ️ Lab profile already exists for lab@test.com');
+                return;
+            }
+
+            await this.profilesService.upsertLabProfile(labUser._id.toString(), {
+                centreName: 'Centre d\'Analyse Medaichain Demo',
+                categorie: ['Biologie', 'Radiologie', 'Imagerie'],
+                phone: '+213555000004',
+                email: 'lab@test.com',
+                localisation: 'Alger, Algérie',
+                profilePhoto: '',
+                isVerified: true,
+                verifiedAt: new Date(),
+                isActive: true,
+                openingHours: {
+                    lundi: { open: '08:00', close: '18:00', isOpen: true },
+                    mardi: { open: '08:00', close: '18:00', isOpen: true },
+                    mercredi: { open: '08:00', close: '18:00', isOpen: true },
+                    jeudi: { open: '08:00', close: '18:00', isOpen: true },
+                    vendredi: { open: '08:00', close: '18:00', isOpen: true },
+                    samedi: { open: '09:00', close: '13:00', isOpen: true },
+                    dimanche: { open: '00:00', close: '00:00', isOpen: false },
+                },
+            });
+
+            console.log('✅ Lab profile seeded for lab@test.com');
+        } catch (error) {
+            console.error('❌ Error seeding lab profile:', error.message || error);
         }
     }
 }

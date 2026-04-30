@@ -1,10 +1,12 @@
 import {
     Controller, Get, Post, Put, Delete,
     Body, Param, Query, UseGuards, Request,
+    ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { ClinicManagementService } from './clinic-management.service';
 import { ProfilesService } from '../profiles/profiles.service';
+import { AccessRequestsService } from '../access-requests/access-requests.service';
 import { AuthService } from '../auth/auth.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -24,8 +26,16 @@ export class ClinicManagementController {
     constructor(
         private readonly service: ClinicManagementService,
         private readonly profilesService: ProfilesService,
+        private readonly accessRequestsService: AccessRequestsService,
         private readonly authService: AuthService,
     ) { }
+
+    private async canDoctorAccessPatient(doctorId: string, patientId?: string): Promise<boolean> {
+        if (!patientId) return true;
+        const tempAccess = await this.profilesService.isPatientTemporaryAccessActive(patientId);
+        if (tempAccess) return true;
+        return this.accessRequestsService.hasAcceptedAccess(doctorId, patientId);
+    }
 
     // ==========================================
     //      PROFIL CLINIQUE (après invitation admin)
@@ -206,8 +216,30 @@ export class ClinicManagementController {
         @Query('doctorId') doctorId?: string,
         @Query('type') type?: string,
     ) {
+        if (req.user.role === UserRole.MEDECIN && patientId) {
+            const allowed = await this.canDoctorAccessPatient(req.user.userId, patientId);
+            if (!allowed) {
+                throw new ForbiddenException('Accès temporaire requis pour consulter ce patient');
+            }
+        }
         const clinic = await this.service.getClinicForUser(req.user.userId, req.user.role);
-        return this.service.getMedicalRecordsByClinic(clinic._id.toString(), { patientId, doctorId, type });
+        let records = await this.service.getMedicalRecordsByClinic(clinic._id.toString(), { patientId, doctorId, type });
+
+        // Si c'est un médecin qui consulte SANS patientId spécifique,
+        // filtrer pour ne montrer que les patients auquel il a accès
+        if (req.user.role === UserRole.MEDECIN && !patientId) {
+            const filteredRecords = [];
+            for (const record of records) {
+                const patId = record.patientId.toString();
+                const allowed = await this.canDoctorAccessPatient(req.user.userId, patId);
+                if (allowed) {
+                    filteredRecords.push(record);
+                }
+            }
+            records = filteredRecords;
+        }
+
+        return records;
     }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
@@ -499,7 +531,13 @@ export class ClinicManagementController {
     @ApiBearerAuth()
     @Get('patient/:patientId/medical-history')
     @ApiOperation({ summary: 'Historique médical complet d\'un patient (toutes cliniques)' })
-    async getPatientHistory(@Param('patientId') patientId: string) {
+    async getPatientHistory(@Request() req, @Param('patientId') patientId: string) {
+        if (req.user.role === UserRole.MEDECIN) {
+            const allowed = await this.canDoctorAccessPatient(req.user.userId, patientId);
+            if (!allowed) {
+                throw new ForbiddenException('Accès temporaire requis pour consulter ce patient');
+            }
+        }
         return this.service.getPatientMedicalHistory(patientId);
     }
 

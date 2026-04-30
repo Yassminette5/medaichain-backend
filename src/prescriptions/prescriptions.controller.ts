@@ -36,10 +36,11 @@ export class PrescriptionsController {
         schema: {
             type: 'object',
             required: ['patientId', 'medications'],
-            properties: {
+                properties: {
                 patientId: { type: 'string', description: 'ID du patient', example: '64abc...123' },
                 diagnosis: { type: 'string', description: 'Diagnostic', example: 'Hypertension artérielle' },
                 notes: { type: 'string', description: 'Notes supplémentaires' },
+                prescriptionImageUrl: { type: 'string', description: 'URL publique de l\'image de l\'ordonnance (optionnel)' },
                 medications: {
                     type: 'array',
                     items: {
@@ -148,6 +149,17 @@ export class PrescriptionsController {
             String(patientId),
             body.pharmacyId,
         );
+    }
+
+    // ========== TRANSFERT ORDONNANCE -> PATIENT (MÉDECIN ON-CHAIN) ==========
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.MEDECIN)
+    @Post(':id/transfer-to-patient')
+    @ApiOperation({ summary: 'Transférer une ordonnance on-chain du médecin vers le patient' })
+    async transferToPatient(@Param('id') id: string, @Request() req: any) {
+        const doctorId = req.user?.userId ?? req.user?.sub;
+        if (!doctorId) throw new BadRequestException('Médecin non identifié');
+        return this.prescriptionsService.transferToPatient(id, String(doctorId));
     }
 
     // ========== ORDONNANCES PARTAGÉES (PHARMACIE) ==========

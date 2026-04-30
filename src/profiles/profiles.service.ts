@@ -106,11 +106,18 @@ export class ProfilesService {
 
         console.log(`[ProfilesService] Upserting PatientInformation for userId: ${userId}`);
 
+        const normalizedData: any = { ...data };
+        if (normalizedData.temporaryAccessEnabled === false) {
+            normalizedData.temporaryAccessUntil = null;
+        } else if (normalizedData.temporaryAccessEnabled === true && !normalizedData.temporaryAccessUntil) {
+            normalizedData.temporaryAccessUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        }
+
         // On utilise l'ID de l'utilisateur comme ID unique pour ses informations
         const profile = await this.patientModel.findByIdAndUpdate(
             objectId,
             {
-                ...data,
+                ...normalizedData,
                 userId: objectId
             },
             { upsert: true, new: true, setDefaultsOnInsert: true }
@@ -126,6 +133,23 @@ export class ProfilesService {
         await this.usersService.markProfileCompleted(userId);
 
         return profile;
+    }
+
+    async isPatientTemporaryAccessActive(patientId: string): Promise<boolean> {
+        if (!patientId || patientId === 'undefined') return false;
+
+        const profile = await this.patientModel
+            .findOne({ userId: new Types.ObjectId(patientId) })
+            .select('temporaryAccessEnabled temporaryAccessUntil')
+            .lean()
+            .exec();
+
+        if (!profile || !profile.temporaryAccessEnabled || !profile.temporaryAccessUntil) {
+            return false;
+        }
+
+        const expiresAt = new Date(profile.temporaryAccessUntil);
+        return expiresAt.getTime() > Date.now();
     }
 
     // ========== CRÉER/METTRE À JOUR PROFIL PHARMACIE ==========

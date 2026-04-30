@@ -37,11 +37,31 @@ export class Prescription {
     @Prop()
     notes?: string;
 
+    @Prop()
+    prescriptionImageUrl?: string;
+
     @Prop({ default: 'active', enum: ['active', 'completed', 'cancelled'] })
     status: string;
 
     @Prop()
     prescriptionDate: Date;
+
+    // Relationship to NftAsset (stores all authoritative NFT data)
+    @Prop({ type: Types.ObjectId, ref: 'NftAsset' })
+    nftAssetId?: Types.ObjectId;
+
+    // Convenience fields (denormalized from NftAsset for faster queries)
+    @Prop()
+    nftTokenId?: string;
+
+    @Prop()
+    nftMintTxHash?: string;
+
+    @Prop()
+    nftContractAddress?: string;
+
+    @Prop()
+    nftChainId?: number;
 }
 
 export const PrescriptionSchema = SchemaFactory.createForClass(Prescription);

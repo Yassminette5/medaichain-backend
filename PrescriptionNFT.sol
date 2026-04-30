@@ -1,50 +1,24 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 
-contract MedicalNFT is ERC721, Ownable {
-    using Counters for Counters.Counter;
-    
-    Counters.Counter private _tokenIdCounter;
-    mapping(uint256 => string) private _tokenURIs;
+contract PrescriptionNFT is ERC721URIStorage, Ownable {
+    uint256 private _nextId = 1;
 
-    constructor() ERC721("MedicalNFT", "MEDNFT") {}
+    constructor() ERC721("PrescriptionNFT", "PRX") Ownable(msg.sender) {
+        // Initialize ERC721 and set Ownable owner to deployer (msg.sender)
+    }
 
     function safeMint(address to, string memory uri) public onlyOwner returns (uint256) {
-        uint256 tokenId = _tokenIdCounter.current();
-        _tokenIdCounter.increment();
+        uint256 tokenId = _nextId++;
         _safeMint(to, tokenId);
-        _tokenURIs[tokenId] = uri;
+        _setTokenURI(tokenId, uri);
         return tokenId;
     }
 
     function mint(address to, string memory uri) public onlyOwner returns (uint256) {
-        uint256 tokenId = _tokenIdCounter.current();
-        _tokenIdCounter.increment();
-        _safeMint(to, tokenId);
-        _tokenURIs[tokenId] = uri;
-        return tokenId;
-    }
-
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
-        return _tokenURIs[tokenId];
-    }
-
-    function setTokenURI(uint256 tokenId, string memory uri) public onlyOwner {
-        require(_exists(tokenId), "ERC721Metadata: URI set of nonexistent token");
-        _tokenURIs[tokenId] = uri;
-    }
-
-    function transferOwnershipToMinter(address minter) public onlyOwner {
-        grantMinterRole(minter);
-    }
-
-    function grantMinterRole(address minter) public onlyOwner {
-        // This is a placeholder for role-based access if needed
-        // For now, we'll keep it simple with onlyOwner
+        return safeMint(to, uri);
     }
 }

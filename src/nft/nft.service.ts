@@ -31,13 +31,15 @@ export class NftService {
         notes?: string;
         prescriptionDate?: Date;
     }): Promise<NftAssetDocument | null> {
-        const owner = await this.safeGetUser(prescription.patientId?.toString());
+        // Mint prescriptions initially to the doctor's wallet so the doctor
+        // can explicitly transfer ownership to the patient later.
+        const owner = await this.safeGetUser(prescription.doctorId?.toString());
         if (!owner?.walletAddress) {
-            this.logger.warn('Wallet missing for prescription NFT mint');
+            this.logger.warn('Wallet missing for prescription NFT mint (doctor)');
             return null;
         }
 
-        const metadata = {
+        const metadata: any = {
             name: `Prescription #${prescription._id}`,
             description: 'Medical prescription asset',
             assetType: NftAssetType.PRESCRIPTION,
@@ -50,6 +52,15 @@ export class NftService {
             ],
         };
 
+        // If a prescription image URL is available, include it as the primary image
+        // and add it to attachments so token metadata consumers can display it.
+        if ((prescription as any).prescriptionImageUrl) {
+            const imageUrl = (prescription as any).prescriptionImageUrl;
+            metadata.image = imageUrl;
+            metadata.attachments = metadata.attachments || [];
+            metadata.attachments.push(imageUrl);
+        }
+
         const asset = await this.upsertAsset({
             assetType: NftAssetType.PRESCRIPTION,
             assetId: prescription._id,
@@ -59,6 +70,42 @@ export class NftService {
         });
 
         await this.mintIfNeeded(asset);
+        return asset;
+    }
+
+    /**
+     * Transfer an existing minted asset on-chain from its current owner
+     * (provided via ownerPrivateKey) to a new wallet address.
+     */
+    async transferAssetOnChain(params: {
+        assetType: NftAssetType;
+        assetId: string;
+        ownerPrivateKey: string;
+        toWallet: string;
+    }) {
+        const asset = await this.getAssetByTypeAndId(params.assetType, params.assetId);
+        if (!asset) throw new NotFoundException('NFT asset introuvable');
+
+        if (!asset.tokenId) {
+            // ensure on-chain mint exists
+            await this.mintIfNeeded(asset, { throwOnError: true });
+        }
+
+        if (!asset.tokenId) throw new BadRequestException('Token on-chain manquant');
+
+        // perform a signed transfer using the owner's private key
+        const transfer = await this.nftChainService.transferFromSigned(
+            params.ownerPrivateKey,
+            asset.ownerWallet,
+            params.toWallet,
+            asset.tokenId,
+        );
+
+        asset.ownerWallet = params.toWallet;
+        asset.txHash = transfer.txHash;
+        asset.status = NftAssetStatus.MINTED;
+        await asset.save();
+
         return asset;
     }
 

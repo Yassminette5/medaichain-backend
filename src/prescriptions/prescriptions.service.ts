@@ -6,6 +6,7 @@ import { NotificationService } from '../notifications/notification.service';
 import { NotificationType } from '../notifications/notification.schema';
 import { NftService } from '../nft/nft.service';
 import { UsersService } from '../users/users.service';
+import { WalletService } from '../wallet/wallet.service';
 import { UserRole } from '../users/schemas/user.schema';
 import { NftAssetType } from '../nft/schemas/nft-asset.schema';
 
@@ -17,6 +18,7 @@ export class PrescriptionsService {
         private notificationService: NotificationService,
         private nftService: NftService,
         private usersService: UsersService,
+        private walletService: WalletService,
     ) { }
 
     // ========== CRÉER UNE ORDONNANCE (MÉDECIN) ==========
@@ -32,7 +34,36 @@ export class PrescriptionsService {
         const saved = await prescription.save();
 
         try {
+            // Create NFT in doctor's wallet
             await this.nftService.createForPrescription(saved);
+            
+            // Immediately transfer NFT to patient's wallet
+            const doctorUser = await this.usersService.findById(doctorId);
+            const patientUser = await this.usersService.findById(String(saved.patientId));
+            
+            if (doctorUser?.walletEncryptedPrivateKey && patientUser?.walletAddress) {
+                const doctorPrivateKey = this.walletService.decryptPrivateKey(doctorUser.walletEncryptedPrivateKey);
+                try {
+                    const updatedAsset = await this.nftService.transferAssetOnChain({
+                        assetType: NftAssetType.PRESCRIPTION,
+                        assetId: saved._id.toString(),
+                        ownerPrivateKey: doctorPrivateKey,
+                        toWallet: patientUser.walletAddress,
+                    });
+                    
+                    // Update prescription with NFT info
+                    saved.nftAssetId = updatedAsset._id;
+                    saved.nftTokenId = updatedAsset.tokenId;
+                    saved.nftMintTxHash = updatedAsset.txHash;
+                    saved.nftContractAddress = updatedAsset.contractAddress;
+                    saved.nftChainId = updatedAsset.chainId;
+                    await saved.save();
+                    
+                    console.log(`[PrescriptionsService] NFT transferred to patient: ${patientUser.walletAddress}`);
+                } catch (transferError) {
+                    console.error('[PrescriptionsService] Erreur transfer NFT to patient:', transferError);
+                }
+            }
         } catch (error) {
             console.error('[PrescriptionsService] Erreur creation NFT ordonnance:', error);
         }
@@ -62,20 +93,65 @@ export class PrescriptionsService {
 
     // ========== RÉCUPÉRER LES ORDONNANCES D'UN PATIENT ==========
     async findByPatient(patientId: string): Promise<PrescriptionDocument[]> {
-        return this.prescriptionModel
+        const prescriptions = await this.prescriptionModel
             .find({ patientId: new Types.ObjectId(patientId) })
             .populate('doctorId', 'fullName email phone')
             .sort({ createdAt: -1 })
+            .lean()
             .exec();
+
+        // Attach on-chain / NFT metadata if available
+        return await Promise.all(prescriptions.map(async (p: any) => {
+            if (p && p._id) {
+                try {
+                    const asset = await this.nftService.getAssetByTypeAndId(NftAssetType.PRESCRIPTION, p._id.toString());
+                    if (asset) {
+                        (p as any).nft = {
+                            tokenId: asset.tokenId,
+                            txHash: asset.txHash,
+                            contractAddress: asset.contractAddress,
+                            chainId: asset.chainId,
+                            metadata: asset.metadata,
+                            metadataUri: asset.metadataUri,
+                        };
+                    }
+                } catch (err) {
+                    // ignore
+                }
+            }
+            return p;
+        })) as unknown as PrescriptionDocument[];
     }
 
     // ========== RÉCUPÉRER LES ORDONNANCES ÉMISES PAR UN MÉDECIN ==========
     async findByDoctor(doctorId: string): Promise<PrescriptionDocument[]> {
-        return this.prescriptionModel
+        const prescriptions = await this.prescriptionModel
             .find({ doctorId: new Types.ObjectId(doctorId) })
             .populate('patientId', 'email phone')
             .sort({ createdAt: -1 })
+            .lean()
             .exec();
+
+        return await Promise.all(prescriptions.map(async (p: any) => {
+            if (p && p._id) {
+                try {
+                    const asset = await this.nftService.getAssetByTypeAndId(NftAssetType.PRESCRIPTION, p._id.toString());
+                    if (asset) {
+                        (p as any).nft = {
+                            tokenId: asset.tokenId,
+                            txHash: asset.txHash,
+                            contractAddress: asset.contractAddress,
+                            chainId: asset.chainId,
+                            metadata: asset.metadata,
+                            metadataUri: asset.metadataUri,
+                        };
+                    }
+                } catch (err) {
+                    // ignore
+                }
+            }
+            return p;
+        })) as unknown as PrescriptionDocument[];
     }
 
     // ========== RÉCUPÉRER UNE ORDONNANCE PAR ID ==========
@@ -253,5 +329,53 @@ export class PrescriptionsService {
         }
 
         return this.findOne(prescriptionId);
+    }
+
+    // ========== TRANSFERER L'ORDONNANCE DU MÉDECIN AU PATIENT (ON-CHAIN) ==========
+    async transferToPatient(prescriptionId: string, doctorId: string) {
+        if (!Types.ObjectId.isValid(prescriptionId)) {
+            throw new NotFoundException('ID ordonnance invalide');
+        }
+
+        const prescription = await this.prescriptionModel.findById(prescriptionId).exec();
+        if (!prescription) throw new NotFoundException('Ordonnance non trouvée');
+
+        if (prescription.doctorId.toString() !== doctorId) {
+            throw new ForbiddenException('Vous n\'êtes pas autorisé à transférer cette ordonnance');
+        }
+
+        const doctorUser = await this.usersService.findById(doctorId);
+        const patientUser = await this.usersService.findById(String(prescription.patientId));
+
+        if (!doctorUser || !patientUser) throw new NotFoundException('Utilisateur introuvable');
+        if (!doctorUser.walletEncryptedPrivateKey) throw new BadRequestException('Cle privee du medecin indisponible');
+        if (!patientUser.walletAddress) throw new BadRequestException('Wallet patient indisponible');
+
+        const asset = await this.nftService.getAssetByTypeAndId(NftAssetType.PRESCRIPTION, prescriptionId);
+        if (!asset) {
+            // try to create asset record and mint it to the doctor
+            await this.nftService.createForPrescription(prescription as any);
+        }
+
+        // decrypt doctor's private key
+        const doctorPrivateKey = this.walletService.decryptPrivateKey(doctorUser.walletEncryptedPrivateKey);
+
+        // perform the on-chain transfer
+        const updatedAsset = await this.nftService.transferAssetOnChain({
+            assetType: NftAssetType.PRESCRIPTION,
+            assetId: prescriptionId,
+            ownerPrivateKey: doctorPrivateKey,
+            toWallet: patientUser.walletAddress,
+        });
+
+        // store token info on the prescription document if present
+        prescription.nftAssetId = updatedAsset._id;
+        prescription.nftTokenId = updatedAsset.tokenId;
+        prescription.nftMintTxHash = updatedAsset.txHash;
+        prescription.nftContractAddress = updatedAsset.contractAddress;
+        prescription.nftChainId = updatedAsset.chainId;
+        await prescription.save();
+
+        return { success: true, asset: updatedAsset };
     }
 }

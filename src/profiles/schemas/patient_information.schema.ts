@@ -33,6 +33,12 @@ export class PatientInformation {
 
     @Prop()
     weight: number; // en kg
+
+    @Prop({ default: false })
+    temporaryAccessEnabled?: boolean;
+
+    @Prop()
+    temporaryAccessUntil?: Date;
 }
 
 export const PatientInformationSchema = SchemaFactory.createForClass(PatientInformation);

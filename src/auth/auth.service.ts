@@ -103,10 +103,11 @@ export class AuthService {
             }
         } catch (error) {
             console.error(`Erreur lors de la création du profil pour le rôle ${registerDto.role}:`, error);
+            const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
             // Re-throw to ensure the client knows something went wrong, 
             // but after user was created we might want to be careful.
             // However, the user says "it wasn't created", so we should throw.
-            throw new BadRequestException(`La création du profil a échoué: ${error.message}`);
+            throw new BadRequestException(`La création du profil a échoué: ${errorMessage}`);
         }
 
         // Récupérer l'utilisateur à jour (avec isProfileCompleted et patientInformation)
@@ -349,7 +350,8 @@ export class AuthService {
                 ...walletFields,
             });
         } catch (error) {
-            if (error.code === 11000 && error.keyPattern && error.keyPattern.phone) {
+            const mongoError = error as { code?: number; keyPattern?: { phone?: unknown } };
+            if (mongoError.code === 11000 && mongoError.keyPattern && mongoError.keyPattern.phone) {
                 console.log(`[RegisterFromInvite] Téléphone ${dto.phone} déjà existant`);
                 throw new ConflictException('Ce numéro de téléphone est déjà utilisé par un autre compte.');
             }
@@ -540,6 +542,8 @@ export class AuthService {
             height: null,
             weight: null,
             allergies: null,
+            temporaryAccessEnabled: false,
+            temporaryAccessUntil: null,
             speciality: null,
             hospital: null,
             licenseNumber: null,
@@ -561,6 +565,8 @@ export class AuthService {
                     mergedUser.height = pData.height;
                     mergedUser.weight = pData.weight;
                     mergedUser.allergies = pData.allergies;
+                    mergedUser.temporaryAccessEnabled = pData.temporaryAccessEnabled ?? false;
+                    mergedUser.temporaryAccessUntil = pData.temporaryAccessUntil ?? null;
                     // Reference to the shared information document
                     mergedUser.patientInformation = user.patientInformation;
                 } else if (roleLower === UserRole.MEDECIN.toString()) {

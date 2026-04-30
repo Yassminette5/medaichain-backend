@@ -6,6 +6,7 @@ import { Prescription, PrescriptionSchema } from './schemas/prescription.schema'
 import { NotificationModule } from '../notifications/notification.module';
 import { NftModule } from '../nft/nft.module';
 import { UsersModule } from '../users/users.module';
+import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { UsersModule } from '../users/users.module';
     NotificationModule,
     NftModule,
     UsersModule,
+    WalletModule,
   ],
   controllers: [PrescriptionsController],
   providers: [PrescriptionsService],

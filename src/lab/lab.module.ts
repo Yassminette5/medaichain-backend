@@ -8,6 +8,7 @@ import { AnalysisResultsService } from './analysis-results.service';
 import { UsersModule } from '../users/users.module';
 import { ProfilesModule } from '../profiles/profiles.module';
 import { AccessRequestsModule } from '../access-requests/access-requests.module';
+import { NftModule } from '../nft/nft.module';
 
 @Module({
     imports: [
@@ -18,6 +19,7 @@ import { AccessRequestsModule } from '../access-requests/access-requests.module'
         UsersModule,
         ProfilesModule,
         AccessRequestsModule,
+        NftModule,
     ],
     controllers: [LabController],
     providers: [LabService, AnalysisResultsService],

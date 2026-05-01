@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 import { User, UserDocument, UserRole } from './schemas/user.schema';
 
@@ -140,6 +140,19 @@ export class UsersService implements OnModuleInit {
         if (!result) {
             throw new NotFoundException('Utilisateur non trouvé');
         }
+
+        // Suppression en cascade des profils associés (pour que l'utilisateur disparaisse complètement)
+        try {
+            const objectId = new Types.ObjectId(id);
+            await this.userModel.db.collection('doctorprofiles').deleteMany({ userId: objectId });
+            await this.userModel.db.collection('patientprofiles').deleteMany({ userId: objectId });
+            await this.userModel.db.collection('pharmacyprofiles').deleteMany({ userId: objectId });
+            await this.userModel.db.collection('clinicprofiles').deleteMany({ userId: objectId });
+            await this.userModel.db.collection('centerprofiles').deleteMany({ userId: objectId });
+        } catch (e) {
+            console.error('Erreur lors de la suppression en cascade des profils', e);
+        }
+
         return { message: 'Utilisateur supprimé avec succès' };
     }
 

@@ -112,6 +112,50 @@ export class PrescriptionsController {
         return this.prescriptionsService.updateStatus(id, body.status);
     }
 
+    // ========== PARTAGE SIMPLE (SANS CHIFFREMENT) ==========
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.PATIENT)
+    @Post('share-documents')
+    @ApiOperation({
+        summary: 'Partager des ordonnances avec des pharmacies (simple, sans chiffrement)',
+        description: 'Le patient sélectionne plusieurs ordonnances et pharmacies. Les documents sont partagés normalement, sans NFT ni chiffrement.',
+    })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            required: ['prescriptionIds', 'pharmacyIds'],
+            properties: {
+                prescriptionIds: { type: 'array', items: { type: 'string' }, description: 'IDs des ordonnances à partager' },
+                pharmacyIds: { type: 'array', items: { type: 'string' }, description: 'IDs des pharmacies destinataires' },
+            },
+        },
+    })
+    async shareDocuments(
+        @Body() body: { prescriptionIds: string[]; pharmacyIds: string[] },
+        @Request() req: any,
+    ) {
+        const patientId = req.user?.userId ?? req.user?.sub;
+        if (!patientId) throw new BadRequestException('Patient non identifié');
+        if (!body.prescriptionIds?.length) throw new BadRequestException('Aucune ordonnance sélectionnée');
+        if (!body.pharmacyIds?.length) throw new BadRequestException('Aucune pharmacie sélectionnée');
+        return this.prescriptionsService.simpleShareWithPharmacies(
+            body.prescriptionIds,
+            body.pharmacyIds,
+            String(patientId),
+        );
+    }
+
+    // ========== ORDONNANCES PARTAGÉES SIMPLE (PHARMACIE) ==========
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.PHARMACIE)
+    @Get('shared-documents')
+    @ApiOperation({ summary: 'Lister les ordonnances partagées simplement avec la pharmacie' })
+    async getSimpleSharedPrescriptions(@Request() req: any) {
+        const pharmacyId = req.user?.userId ?? req.user?.sub;
+        if (!pharmacyId) return [];
+        return this.prescriptionsService.listSimpleSharedForPharmacy(String(pharmacyId));
+    }
+
     // ========== PARTAGER UNE ORDONNANCE AVEC UNE PHARMACIE (PATIENT) ==========
     @UseGuards(RolesGuard)
     @Roles(UserRole.PATIENT)

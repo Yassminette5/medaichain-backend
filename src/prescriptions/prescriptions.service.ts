@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException 
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Prescription, PrescriptionDocument } from './schemas/prescription.schema';
+import { SharedPrescription, SharedPrescriptionDocument } from './schemas/shared-prescription.schema';
 import { NotificationService } from '../notifications/notification.service';
 import { NotificationType } from '../notifications/notification.schema';
 import { NftService } from '../nft/nft.service';
@@ -15,6 +16,8 @@ export class PrescriptionsService {
     constructor(
         @InjectModel(Prescription.name)
         private prescriptionModel: Model<PrescriptionDocument>,
+        @InjectModel(SharedPrescription.name)
+        private sharedPrescriptionModel: Model<SharedPrescriptionDocument>,
         private notificationService: NotificationService,
         private nftService: NftService,
         private usersService: UsersService,
@@ -177,8 +180,14 @@ export class PrescriptionsService {
             throw new NotFoundException('ID ordonnance invalide');
         }
 
+        const normalizedStatus = this.normalizePrescriptionStatus(status);
+
         const prescription = await this.prescriptionModel
-            .findByIdAndUpdate(id, { status }, { new: true })
+            .findByIdAndUpdate(
+                id,
+                { status: normalizedStatus },
+                { new: true, runValidators: true, context: 'query' },
+            )
             .exec();
 
         if (!prescription) {
@@ -192,7 +201,7 @@ export class PrescriptionsService {
                 cancelled: 'Votre ordonnance a été annulée.',
                 active: 'Votre ordonnance est à nouveau active.',
             };
-            const message = statusMessages[status] || `Le statut de votre ordonnance a été mis à jour : ${status}`;
+            const message = statusMessages[normalizedStatus] || `Le statut de votre ordonnance a été mis à jour : ${normalizedStatus}`;
 
             await this.notificationService.createNotification({
                 userId: prescription.patientId.toString(),
@@ -200,13 +209,44 @@ export class PrescriptionsService {
                 message,
                 type: NotificationType.PRESCRIPTION_UPDATE,
                 relatedId: id,
-                data: { prescriptionId: id, status },
+                data: { prescriptionId: id, status: normalizedStatus },
             });
         } catch (error) {
             console.error('[PrescriptionsService] Erreur notification statut:', error);
         }
 
         return prescription;
+    }
+
+    private normalizePrescriptionStatus(status: string): 'active' | 'completed' | 'cancelled' {
+        const lowerStatus = status.toString().trim().toLowerCase();
+        switch (lowerStatus) {
+            case 'active':
+            case 'en cours':
+            case 'en_cours':
+            case 'pending':
+            case 'en attente':
+            case 'en_attente':
+                return 'active';
+            case 'completed':
+            case 'complété':
+            case 'complétée':
+            case 'termine':
+            case 'terminé':
+            case 'terminée':
+            case 'done':
+            case 'finished':
+                return 'completed';
+            case 'cancelled':
+            case 'canceled':
+            case 'annulé':
+            case 'annule':
+            case 'annulée':
+            case 'rejected':
+                return 'cancelled';
+            default:
+                throw new BadRequestException(`Statut d'ordonnance invalide: ${status}`);
+        }
     }
 
     // ========== SUPPRIMER UNE ORDONNANCE (MÉDECIN SEULEMENT) ==========
@@ -377,5 +417,80 @@ export class PrescriptionsService {
         await prescription.save();
 
         return { success: true, asset: updatedAsset };
+    }
+
+    // ========== SIMPLE SHARE (NO ENCRYPTION / NO NFT) ==========
+    async simpleShareWithPharmacies(
+        prescriptionIds: string[],
+        pharmacyIds: string[],
+        patientId: string,
+    ) {
+        // Validate that all prescriptions belong to the patient
+        const prescriptions = await this.prescriptionModel.find({
+            _id: { $in: prescriptionIds.map((id) => new Types.ObjectId(id)) },
+            patientId: new Types.ObjectId(patientId),
+        }).exec();
+
+        if (prescriptions.length === 0) {
+            throw new BadRequestException('Aucune ordonnance valide trouvée');
+        }
+
+        if (prescriptions.length !== prescriptionIds.length) {
+            throw new BadRequestException('Certaines ordonnances ne vous appartiennent pas');
+        }
+
+        const validPrescriptionIds = prescriptions.map((p) => p._id.toString());
+
+        // Build share records (skip duplicates via upsert)
+        const ops = [];
+        for (const prescriptionId of validPrescriptionIds) {
+            for (const pharmacyId of pharmacyIds) {
+                ops.push({
+                    updateOne: {
+                        filter: {
+                            prescriptionId: new Types.ObjectId(prescriptionId),
+                            pharmacyId: new Types.ObjectId(pharmacyId),
+                        },
+                        update: {
+                            $setOnInsert: {
+                                prescriptionId: new Types.ObjectId(prescriptionId),
+                                pharmacyId: new Types.ObjectId(pharmacyId),
+                                patientId: new Types.ObjectId(patientId),
+                                sharedAt: new Date(),
+                            },
+                        },
+                        upsert: true,
+                    },
+                });
+            }
+        }
+
+        if (ops.length > 0) {
+            await this.sharedPrescriptionModel.bulkWrite(ops);
+        }
+
+        return {
+            success: true,
+            sharedCount: ops.length,
+            prescriptionIds: validPrescriptionIds,
+            pharmacyIds,
+        };
+    }
+
+    async listSimpleSharedForPharmacy(pharmacyId: string): Promise<PrescriptionDocument[]> {
+        const shares = await this.sharedPrescriptionModel.find({
+            pharmacyId: new Types.ObjectId(pharmacyId),
+        }).exec();
+
+        if (!shares.length) return [];
+
+        const prescriptionIds = shares.map((s) => s.prescriptionId);
+
+        return this.prescriptionModel
+            .find({ _id: { $in: prescriptionIds } })
+            .populate('doctorId', 'fullName email phone')
+            .populate('patientId', 'email phone fullName')
+            .sort({ createdAt: -1 })
+            .exec();
     }
 }

@@ -258,7 +258,49 @@ export class ProfilesService {
         const pharmacies = await this.pharmacyModel.find().exec();
         console.log(`[ProfilesService] searchPharmacies returned ${pharmacies.length} pharmacies`);
 
-        return pharmacies;
+        return pharmacies.sort((a: any, b: any) => {
+            const aBoostUntil = a.boostedUntil ? new Date(a.boostedUntil).getTime() : 0;
+            const bBoostUntil = b.boostedUntil ? new Date(b.boostedUntil).getTime() : 0;
+            const now = Date.now();
+            const aActive = aBoostUntil > now ? 1 : 0;
+            const bActive = bBoostUntil > now ? 1 : 0;
+            if (aActive !== bActive) return bActive - aActive;
+
+            const aScore = Number(a.boostScore ?? 0);
+            const bScore = Number(b.boostScore ?? 0);
+            if (aScore !== bScore) return bScore - aScore;
+
+            return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
+        });
+    }
+
+    async setPharmacyBoost(
+        userId: string,
+        boostScoreDelta: number,
+        boostedUntil: Date,
+    ): Promise<PharmacyProfileDocument> {
+        if (!userId || userId === 'undefined') {
+            throw new BadRequestException('ID utilisateur manquant pour le boost pharmacie');
+        }
+
+        const objectId = new Types.ObjectId(userId);
+        const profile = await this.pharmacyModel.findOneAndUpdate(
+            { userId: objectId },
+            {
+                $inc: { boostScore: boostScoreDelta },
+                $set: {
+                    boostedUntil,
+                    boostedAt: new Date(),
+                },
+            },
+            { new: true },
+        ).exec();
+
+        if (!profile) {
+            throw new NotFoundException('Profil pharmacie non trouvé');
+        }
+
+        return profile;
     }
 
     // ========== RECHERCHER LABS ==========

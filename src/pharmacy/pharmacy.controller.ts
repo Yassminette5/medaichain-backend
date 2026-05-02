@@ -252,7 +252,7 @@ export class PharmacyController {
   @ApiBearerAuth()
   @Put('my/requests/:requestId')
   @ApiOperation({
-    summary: "Modifier le statut d'une demande (valider, terminer, etc.)",
+    summary: "Modifier le statut d'une demande (valider ou rejeter)",
   })
   async updateMyRequest(
     @Request() req,
@@ -260,6 +260,22 @@ export class PharmacyController {
     @Body() dto: UpdateMedicationRequestDto,
   ) {
     return this.requestService.updateRequest(req.user.userId, requestId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.PHARMACIE)
+  @ApiBearerAuth()
+  @Post('my/boost')
+  @ApiOperation({
+    summary: 'Dépenser des FRYMN pour booster la pharmacie dans la liste patient',
+    description:
+      'Débite les FRYMN du wallet pharmacie et active un boost temporaire de visibilité.',
+  })
+  async boostMyPharmacy(
+    @Request() req,
+    @Body() body: { amount?: number },
+  ) {
+    return this.requestService.boostPharmacy(req.user.userId, body?.amount ?? 1);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

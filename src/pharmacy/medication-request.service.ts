@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
+import { ethers } from 'ethers';
 import {
   MedicationRequest,
   Patient,
@@ -19,6 +20,7 @@ import { NftService } from '../nft/nft.service';
 import { UsersService } from '../users/users.service';
 import { WalletService } from '../wallet/wallet.service';
 import { WalletChainService } from '../wallet/wallet-chain.service';
+import { TokenService } from '../token/token.service';
 
 @Injectable()
 export class MedicationRequestService {
@@ -34,6 +36,7 @@ export class MedicationRequestService {
     private usersService: UsersService,
     private walletService: WalletService,
     private walletChainService: WalletChainService,
+    private tokenService: TokenService,
   ) {}
 
   async getRequestsByPharmacy(
@@ -324,9 +327,19 @@ export class MedicationRequestService {
     requestId: string,
     updateDto: UpdateMedicationRequestDto,
   ): Promise<MedicationRequest> {
+    const currentRequest = await this.medicationRequestModel
+      .findOne({ _id: requestId, pharmacyId })
+      .exec();
+
+    if (!currentRequest) {
+      throw new NotFoundException('Request not found');
+    }
+
     const updatedRequest = await this.medicationRequestModel
       .findOneAndUpdate({ _id: requestId, pharmacyId }, updateDto, {
         new: true,
+        runValidators: true,
+        context: 'query',
       })
       .exec();
 
@@ -334,7 +347,79 @@ export class MedicationRequestService {
       throw new NotFoundException('Request not found');
     }
 
+    const wasValidatedBefore = currentRequest.status === RequestStatus.VALIDE;
+    const isNowValidated = updatedRequest.status === RequestStatus.VALIDE;
+    const wasUrgentRequest = currentRequest.status === RequestStatus.URGENT;
+    const rewardAlreadyMinted = Boolean(
+      (updatedRequest as any).firstResponderRewardMintTxHash,
+    );
+
+    if (!wasValidatedBefore && wasUrgentRequest && isNowValidated && !rewardAlreadyMinted) {
+      try {
+        const pharmacyUser = await this.usersService.findById(pharmacyId);
+        if (pharmacyUser?.walletAddress) {
+          const rewardAmount = ethers.parseUnits('1', 18).toString();
+          const reward = await this.tokenService.mintTokens(
+            pharmacyUser.walletAddress,
+            rewardAmount,
+          );
+
+          (updatedRequest as any).firstResponderRewardMintTxHash = reward.txHash;
+          (updatedRequest as any).firstResponderRewardMintedAt = new Date();
+          (updatedRequest as any).firstResponderRewardAmount = '1';
+          await updatedRequest.save();
+
+          this.logger.log(
+            `[MedicationRequestService] Minted FRYMN reward for first responder pharmacy ${pharmacyId}: ${reward.txHash}`,
+          );
+        }
+      } catch (error) {
+        this.logger.error(
+          `[MedicationRequestService] Failed to mint first responder reward for request ${requestId}`,
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
+    }
+
     return updatedRequest;
+  }
+
+  async boostPharmacy(
+    pharmacyId: string,
+    amount = 1,
+  ): Promise<{ profile: any; txHash: string; boostedUntil: Date }> {
+    if (amount <= 0) {
+      throw new BadRequestException('Boost amount must be greater than 0');
+    }
+
+    const pharmacyUser = await this.usersService.findById(pharmacyId);
+    if (!pharmacyUser?.walletEncryptedPrivateKey || !pharmacyUser.walletAddress) {
+      throw new BadRequestException('Pharmacy wallet not available');
+    }
+
+    const privateKey = this.walletService.decryptPrivateKey(
+      pharmacyUser.walletEncryptedPrivateKey,
+    );
+    const burnAddress = '0x000000000000000000000000000000000000dEaD';
+    const amountBaseUnits = ethers.parseUnits(String(amount), 18).toString();
+    const transfer = await this.tokenService.transferTokensFromPrivateKey(
+      privateKey,
+      burnAddress,
+      amountBaseUnits,
+    );
+
+    const boostedUntil = new Date(Date.now() + amount * 24 * 60 * 60 * 1000);
+    const profile = await this.profilesService.setPharmacyBoost(
+      pharmacyId,
+      amount,
+      boostedUntil,
+    );
+
+    return {
+      profile,
+      txHash: transfer.txHash,
+      boostedUntil,
+    };
   }
 
   async deleteRequest(pharmacyId: string, requestId: string): Promise<void> {

@@ -21,6 +21,7 @@ import { PrescriptionAnalysisService } from './prescription-analysis.service';
 import { NftModule } from '../nft/nft.module';
 import { UsersModule } from '../users/users.module';
 import { WalletModule } from '../wallet/wallet.module';
+import { TokenModule } from '../token/token.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { WalletModule } from '../wallet/wallet.module';
     NftModule,
     UsersModule,
     WalletModule,
+    TokenModule,
   ],
   controllers: [PharmacyController],
   providers: [

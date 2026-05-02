@@ -83,6 +83,15 @@ export class PharmacyProfile {
 
     @Prop({ default: true })
     prescriptionNotifications: boolean;
+
+    @Prop({ default: 0 })
+    boostScore: number;
+
+    @Prop()
+    boostedUntil: Date;
+
+    @Prop()
+    boostedAt: Date;
 }
 
 export const PharmacyProfileSchema = SchemaFactory.createForClass(PharmacyProfile);

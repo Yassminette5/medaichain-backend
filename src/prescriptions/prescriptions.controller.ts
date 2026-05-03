@@ -36,10 +36,11 @@ export class PrescriptionsController {
         schema: {
             type: 'object',
             required: ['patientId', 'medications'],
-            properties: {
+                properties: {
                 patientId: { type: 'string', description: 'ID du patient', example: '64abc...123' },
                 diagnosis: { type: 'string', description: 'Diagnostic', example: 'Hypertension artérielle' },
                 notes: { type: 'string', description: 'Notes supplémentaires' },
+                prescriptionImageUrl: { type: 'string', description: 'URL publique de l\'image de l\'ordonnance (optionnel)' },
                 medications: {
                     type: 'array',
                     items: {
@@ -109,6 +110,122 @@ export class PrescriptionsController {
         @Body() body: { status: string },
     ) {
         return this.prescriptionsService.updateStatus(id, body.status);
+    }
+
+    // ========== PARTAGE SIMPLE (SANS CHIFFREMENT) ==========
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.PATIENT)
+    @Post('share-documents')
+    @ApiOperation({
+        summary: 'Partager des ordonnances avec des pharmacies (simple, sans chiffrement)',
+        description: 'Le patient sélectionne plusieurs ordonnances et pharmacies. Les documents sont partagés normalement, sans NFT ni chiffrement.',
+    })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            required: ['prescriptionIds', 'pharmacyIds'],
+            properties: {
+                prescriptionIds: { type: 'array', items: { type: 'string' }, description: 'IDs des ordonnances à partager' },
+                pharmacyIds: { type: 'array', items: { type: 'string' }, description: 'IDs des pharmacies destinataires' },
+            },
+        },
+    })
+    async shareDocuments(
+        @Body() body: { prescriptionIds: string[]; pharmacyIds: string[] },
+        @Request() req: any,
+    ) {
+        const patientId = req.user?.userId ?? req.user?.sub;
+        if (!patientId) throw new BadRequestException('Patient non identifié');
+        if (!body.prescriptionIds?.length) throw new BadRequestException('Aucune ordonnance sélectionnée');
+        if (!body.pharmacyIds?.length) throw new BadRequestException('Aucune pharmacie sélectionnée');
+        return this.prescriptionsService.simpleShareWithPharmacies(
+            body.prescriptionIds,
+            body.pharmacyIds,
+            String(patientId),
+        );
+    }
+
+    // ========== ORDONNANCES PARTAGÉES SIMPLE (PHARMACIE) ==========
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.PHARMACIE)
+    @Get('shared-documents')
+    @ApiOperation({ summary: 'Lister les ordonnances partagées simplement avec la pharmacie' })
+    async getSimpleSharedPrescriptions(@Request() req: any) {
+        const pharmacyId = req.user?.userId ?? req.user?.sub;
+        if (!pharmacyId) return [];
+        return this.prescriptionsService.listSimpleSharedForPharmacy(String(pharmacyId));
+    }
+
+    // ========== PARTAGER UNE ORDONNANCE AVEC UNE PHARMACIE (PATIENT) ==========
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.PATIENT)
+    @Post(':id/share')
+    @ApiOperation({ summary: 'Partager une ordonnance avec une pharmacie (Patient)' })
+    async shareWithPharmacy(
+        @Param('id') id: string,
+        @Body() body: { pharmacyId: string; expiresAt?: string },
+        @Request() req: any,
+    ) {
+        const patientId = req.user?.userId ?? req.user?.sub;
+        if (!patientId) throw new BadRequestException('Patient non identifié');
+        return this.prescriptionsService.shareWithPharmacy(
+            id,
+            String(patientId),
+            body.pharmacyId,
+            body.expiresAt ? new Date(body.expiresAt) : undefined,
+        );
+    }
+
+    // ========== RÉVOQUER LE PARTAGE D'UNE ORDONNANCE (PATIENT) ==========
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.PATIENT)
+    @Post(':id/revoke')
+    @ApiOperation({ summary: 'Révoquer le partage d\'une ordonnance (Patient)' })
+    async revokeShare(
+        @Param('id') id: string,
+        @Body() body: { pharmacyId: string },
+        @Request() req: any,
+    ) {
+        const patientId = req.user?.userId ?? req.user?.sub;
+        if (!patientId) throw new BadRequestException('Patient non identifié');
+        return this.prescriptionsService.revokeShareWithPharmacy(
+            id,
+            String(patientId),
+            body.pharmacyId,
+        );
+    }
+
+    // ========== TRANSFERT ORDONNANCE -> PATIENT (MÉDECIN ON-CHAIN) ==========
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.MEDECIN)
+    @Post(':id/transfer-to-patient')
+    @ApiOperation({ summary: 'Transférer une ordonnance on-chain du médecin vers le patient' })
+    async transferToPatient(@Param('id') id: string, @Request() req: any) {
+        const doctorId = req.user?.userId ?? req.user?.sub;
+        if (!doctorId) throw new BadRequestException('Médecin non identifié');
+        return this.prescriptionsService.transferToPatient(id, String(doctorId));
+    }
+
+    // ========== ORDONNANCES PARTAGÉES (PHARMACIE) ==========
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.PHARMACIE)
+    @Get('shared')
+    @ApiOperation({ summary: 'Lister les ordonnances partagées avec la pharmacie' })
+    async getSharedPrescriptions(@Request() req: any) {
+        const pharmacyId = req.user?.userId ?? req.user?.sub;
+        if (!pharmacyId) return [];
+        return this.prescriptionsService.listSharedForPharmacy(String(pharmacyId));
+    }
+
+    // ========== ORDONNANCE PARTAGÉE DÉTAILLÉE (PHARMACIE) ==========
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.PHARMACIE)
+    @Get('shared/:id')
+    @ApiOperation({ summary: 'Obtenir le détail d\'une ordonnance partagée (Pharmacie)' })
+    async getSharedPrescription(@Param('id') id: string, @Request() req: any) {
+        const pharmacyId = req.user?.userId ?? req.user?.sub;
+        if (!pharmacyId) throw new BadRequestException('Pharmacie non identifiée');
+        return this.prescriptionsService.getSharedByPharmacy(id, String(pharmacyId));
     }
 
     // ========== SUPPRIMER UNE ORDONNANCE (MÉDECIN) ==========

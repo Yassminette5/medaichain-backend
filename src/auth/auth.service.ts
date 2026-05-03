@@ -12,6 +12,7 @@ import * as bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { UsersService } from '../users/users.service';
 import { UserDocument, UserRole } from '../users/schemas/user.schema';
+import { WalletService } from '../wallet/wallet.service';
 import {
     RegisterDto,
     LoginDto,
@@ -33,6 +34,7 @@ export class AuthService {
         private mailService: MailService,
         @Inject(forwardRef(() => ProfilesService))
         private profilesService: ProfilesService,
+        private walletService: WalletService,
     ) { }
 
     // ========== INSCRIPTION ==========
@@ -52,6 +54,8 @@ export class AuthService {
         // Hasher le mot de passe
         const hashedPassword = await bcrypt.hash(registerDto.password, 10);
 
+        const walletFields = await this.createWalletFields();
+
         // Créer l'utilisateur
         const user = await this.usersService.create({
             email: registerDto.email,
@@ -59,6 +63,7 @@ export class AuthService {
             phone: registerDto.phone,
             role: registerDto.role,
             isProfileCompleted: false, // Sera mis à true après création du profil
+            ...walletFields,
         });
 
         // Créer le profil associé
@@ -98,10 +103,11 @@ export class AuthService {
             }
         } catch (error) {
             console.error(`Erreur lors de la création du profil pour le rôle ${registerDto.role}:`, error);
+            const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
             // Re-throw to ensure the client knows something went wrong, 
             // but after user was created we might want to be careful.
             // However, the user says "it wasn't created", so we should throw.
-            throw new BadRequestException(`La création du profil a échoué: ${error.message}`);
+            throw new BadRequestException(`La création du profil a échoué: ${errorMessage}`);
         }
 
         // Récupérer l'utilisateur à jour (avec isProfileCompleted et patientInformation)
@@ -329,6 +335,8 @@ export class AuthService {
 
         const hashedPassword = await bcrypt.hash(dto.password, 10);
 
+        const walletFields = await this.createWalletFields();
+
         // Créer utilisateur
         console.log(`[RegisterFromInvite] Création de l'utilisateur...`);
         let user;
@@ -339,9 +347,11 @@ export class AuthService {
                 phone: dto.phone,
                 role: role as any,
                 isProfileCompleted: true, // On considère complet après ce formulaire
+                ...walletFields,
             });
         } catch (error) {
-            if (error.code === 11000 && error.keyPattern && error.keyPattern.phone) {
+            const mongoError = error as { code?: number; keyPattern?: { phone?: unknown } };
+            if (mongoError.code === 11000 && mongoError.keyPattern && mongoError.keyPattern.phone) {
                 console.log(`[RegisterFromInvite] Téléphone ${dto.phone} déjà existant`);
                 throw new ConflictException('Ce numéro de téléphone est déjà utilisé par un autre compte.');
             }
@@ -431,6 +441,8 @@ export class AuthService {
         const rawPassword = this.generateRandomPassword(12);
         const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
+        const walletFields = await this.createWalletFields();
+
         // Créer l'utilisateur
         const user = await this.usersService.create({
             email: dto.email,
@@ -438,6 +450,7 @@ export class AuthService {
             phone: dto.phone,
             role: dto.role,
             isProfileCompleted: false,
+            ...walletFields,
         });
 
         // Créer le profil associé selon le rôle
@@ -502,9 +515,22 @@ export class AuthService {
         return password;
     }
 
+    private async createWalletFields() {
+        const wallet = await this.walletService.createWallet();
+        return {
+            walletAddress: wallet.address,
+            walletChainId: wallet.chainId,
+            walletEncryptedPrivateKey: wallet.encryptedPrivateKey,
+            walletCreatedAt: wallet.createdAt,
+            walletRegistrationTxHash: wallet.walletRegistrationTxHash,
+            walletRegisteredOnChainAt: wallet.walletRegisteredOnChainAt,
+            walletOnChainRegistrationStatus: wallet.walletOnChainRegistrationStatus
+        };
+    }
+
     private async sanitizeUser(user: UserDocument) {
         const userObj = user.toObject();
-        const { password, resetPasswordToken, resetPasswordExpires, ...result } = userObj;
+        const { password, resetPasswordToken, resetPasswordExpires, walletEncryptedPrivateKey, ...result } = userObj;
         console.log(`[AuthService] Sanitizing user: ${result.email}, role: ${result.role} (type: ${typeof result.role})`);
 
         const mergedUser = {
@@ -516,6 +542,8 @@ export class AuthService {
             height: null,
             weight: null,
             allergies: null,
+            temporaryAccessEnabled: false,
+            temporaryAccessUntil: null,
             speciality: null,
             hospital: null,
             licenseNumber: null,
@@ -537,6 +565,8 @@ export class AuthService {
                     mergedUser.height = pData.height;
                     mergedUser.weight = pData.weight;
                     mergedUser.allergies = pData.allergies;
+                    mergedUser.temporaryAccessEnabled = pData.temporaryAccessEnabled ?? false;
+                    mergedUser.temporaryAccessUntil = pData.temporaryAccessUntil ?? null;
                     // Reference to the shared information document
                     mergedUser.patientInformation = user.patientInformation;
                 } else if (roleLower === UserRole.MEDECIN.toString()) {

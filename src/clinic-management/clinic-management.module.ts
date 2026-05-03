@@ -13,6 +13,7 @@ import { User, UserSchema } from '../users/schemas/user.schema';
 import { ProfilesModule } from '../profiles/profiles.module';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationModule } from '../notifications/notification.module';
+import { AccessRequestsModule } from '../access-requests/access-requests.module';
 
 @Module({
     imports: [
@@ -29,6 +30,7 @@ import { NotificationModule } from '../notifications/notification.module';
         ProfilesModule,
         forwardRef(() => AuthModule),
         NotificationModule,
+        AccessRequestsModule,
     ],
     controllers: [ClinicManagementController],
     providers: [ClinicManagementService],

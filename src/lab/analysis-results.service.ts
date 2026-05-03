@@ -3,12 +3,16 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { AnalysisResult, AnalysisResultDocument } from './schemas/analysis-result.schema';
 import { UsersService } from '../users/users.service';
+import { NftService } from '../nft/nft.service';
+import { LabService } from './lab.service';
 
 @Injectable()
 export class AnalysisResultsService {
     constructor(
         @InjectModel(AnalysisResult.name) private analysisResultModel: Model<AnalysisResultDocument>,
         private readonly usersService: UsersService,
+        private readonly nftService: NftService,
+        private readonly labService: LabService,
     ) {}
 
     // ========== CRÉER UN RÉSULTAT D'ANALYSE ==========
@@ -37,7 +41,41 @@ export class AnalysisResultsService {
             notes: data.notes,
         });
 
-        return analysisResult.save();
+        const saved = await analysisResult.save();
+
+        try {
+            const patient = await this.usersService.findByEmail(data.patientEmail);
+            if (!patient?.walletAddress) {
+                console.warn('[AnalysisResultsService] Wallet missing for analysis NFT mint');
+                return saved;
+            }
+
+            const labProfile = await this.labService.getLabById(labId).catch(() => null);
+            const asset = await this.nftService.createForPatientAnalysis({
+                _id: saved._id,
+                userId: patient._id,
+                title: data.patientName,
+                analysisType: data.analysisType,
+                analysisTypeOther: data.analysisTypeOther,
+                analysisDate: data.analysisDate,
+                source: 'centre_analyse',
+                centreName: labProfile?.centreName,
+                resultFile: data.resultFile,
+            });
+
+            if (asset) {
+                saved.nftAssetId = asset._id;
+                saved.nftTokenId = asset.tokenId;
+                saved.nftMintTxHash = asset.txHash;
+                saved.nftContractAddress = asset.contractAddress;
+                saved.nftChainId = asset.chainId;
+                await saved.save();
+            }
+        } catch (error) {
+            console.error('[AnalysisResultsService] Erreur creation NFT analyse:', error);
+        }
+
+        return saved;
     }
 
     // ========== OBTENIR TOUS LES RÉSULTATS D'UN LABORATOIRE ==========

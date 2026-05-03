@@ -12,10 +12,14 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Res,
+  NotFoundException,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname, join } from 'path';
+import { existsSync, createReadStream } from 'fs';
 import {
   ApiTags,
   ApiOperation,
@@ -248,7 +252,7 @@ export class PharmacyController {
   @ApiBearerAuth()
   @Put('my/requests/:requestId')
   @ApiOperation({
-    summary: "Modifier le statut d'une demande (valider, terminer, etc.)",
+    summary: "Modifier le statut d'une demande (valider ou rejeter)",
   })
   async updateMyRequest(
     @Request() req,
@@ -256,6 +260,22 @@ export class PharmacyController {
     @Body() dto: UpdateMedicationRequestDto,
   ) {
     return this.requestService.updateRequest(req.user.userId, requestId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.PHARMACIE)
+  @ApiBearerAuth()
+  @Post('my/boost')
+  @ApiOperation({
+    summary: 'Dépenser des FRYMN pour booster la pharmacie dans la liste patient',
+    description:
+      'Débite les FRYMN du wallet pharmacie et active un boost temporaire de visibilité.',
+  })
+  async boostMyPharmacy(
+    @Request() req,
+    @Body() body: { amount?: number },
+  ) {
+    return this.requestService.boostPharmacy(req.user.userId, body?.amount ?? 1);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -330,13 +350,55 @@ export class PharmacyController {
   )
   async uploadPrescription(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('Aucun fichier fourni');
-    const fileUrl = `${process.env.API_URL || 'http://localhost:3000'}/uploads/prescriptions/${file.filename}`;
+    // Return relative URL so clients can resolve with their baseUrl (localhost, ngrok, etc.)
+    const fileUrl = `/uploads/prescriptions/${file.filename}`;
     return {
       success: true,
       url: fileUrl,
       filename: file.filename,
       size: file.size,
     };
+  }
+
+  // ============================================================
+  //   SERVIR FICHIER ORDONNANCE (proxy local — évite page avertissement ngrok)
+  // ============================================================
+  @Get('uploads/prescriptions/:filename')
+  @ApiOperation({
+    summary: 'Télécharger une image ordonnance (proxy backend)',
+    description:
+      'Sert le fichier ordonnance directement depuis le backend (évite la page avertissement ngrok sur ngrok-free).',
+  })
+  async servePrescriptionFile(
+    @Param('filename') filename: string,
+    @Res() res: Response,
+  ) {
+    // Validate filename (simple security: no path traversal)
+    if (filename.includes('..') || filename.includes('/')) {
+      throw new BadRequestException('Invalid filename');
+    }
+
+    const filePath = join(process.cwd(), 'uploads', 'prescriptions', filename);
+
+    if (!existsSync(filePath)) {
+      throw new NotFoundException('File not found');
+    }
+
+    // Set appropriate content-type based on extension
+    const ext = filename.split('.').pop()?.toLowerCase() || '';
+    const contentTypes: { [key: string]: string } = {
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      gif: 'image/gif',
+      pdf: 'application/pdf',
+    };
+    const contentType = contentTypes[ext] || 'application/octet-stream';
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    const stream = createReadStream(filePath);
+    stream.pipe(res);
   }
 
   // ============================================================

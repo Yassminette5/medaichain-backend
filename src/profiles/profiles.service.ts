@@ -106,11 +106,18 @@ export class ProfilesService {
 
         console.log(`[ProfilesService] Upserting PatientInformation for userId: ${userId}`);
 
+        const normalizedData: any = { ...data };
+        if (normalizedData.temporaryAccessEnabled === false) {
+            normalizedData.temporaryAccessUntil = null;
+        } else if (normalizedData.temporaryAccessEnabled === true && !normalizedData.temporaryAccessUntil) {
+            normalizedData.temporaryAccessUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        }
+
         // On utilise l'ID de l'utilisateur comme ID unique pour ses informations
         const profile = await this.patientModel.findByIdAndUpdate(
             objectId,
             {
-                ...data,
+                ...normalizedData,
                 userId: objectId
             },
             { upsert: true, new: true, setDefaultsOnInsert: true }
@@ -126,6 +133,23 @@ export class ProfilesService {
         await this.usersService.markProfileCompleted(userId);
 
         return profile;
+    }
+
+    async isPatientTemporaryAccessActive(patientId: string): Promise<boolean> {
+        if (!patientId || patientId === 'undefined') return false;
+
+        const profile = await this.patientModel
+            .findOne({ userId: new Types.ObjectId(patientId) })
+            .select('temporaryAccessEnabled temporaryAccessUntil')
+            .lean()
+            .exec();
+
+        if (!profile || !profile.temporaryAccessEnabled || !profile.temporaryAccessUntil) {
+            return false;
+        }
+
+        const expiresAt = new Date(profile.temporaryAccessUntil);
+        return expiresAt.getTime() > Date.now();
     }
 
     // ========== CRÉER/METTRE À JOUR PROFIL PHARMACIE ==========
@@ -234,7 +258,49 @@ export class ProfilesService {
         const pharmacies = await this.pharmacyModel.find().exec();
         console.log(`[ProfilesService] searchPharmacies returned ${pharmacies.length} pharmacies`);
 
-        return pharmacies;
+        return pharmacies.sort((a: any, b: any) => {
+            const aBoostUntil = a.boostedUntil ? new Date(a.boostedUntil).getTime() : 0;
+            const bBoostUntil = b.boostedUntil ? new Date(b.boostedUntil).getTime() : 0;
+            const now = Date.now();
+            const aActive = aBoostUntil > now ? 1 : 0;
+            const bActive = bBoostUntil > now ? 1 : 0;
+            if (aActive !== bActive) return bActive - aActive;
+
+            const aScore = Number(a.boostScore ?? 0);
+            const bScore = Number(b.boostScore ?? 0);
+            if (aScore !== bScore) return bScore - aScore;
+
+            return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
+        });
+    }
+
+    async setPharmacyBoost(
+        userId: string,
+        boostScoreDelta: number,
+        boostedUntil: Date,
+    ): Promise<PharmacyProfileDocument> {
+        if (!userId || userId === 'undefined') {
+            throw new BadRequestException('ID utilisateur manquant pour le boost pharmacie');
+        }
+
+        const objectId = new Types.ObjectId(userId);
+        const profile = await this.pharmacyModel.findOneAndUpdate(
+            { userId: objectId },
+            {
+                $inc: { boostScore: boostScoreDelta },
+                $set: {
+                    boostedUntil,
+                    boostedAt: new Date(),
+                },
+            },
+            { new: true },
+        ).exec();
+
+        if (!profile) {
+            throw new NotFoundException('Profil pharmacie non trouvé');
+        }
+
+        return profile;
     }
 
     // ========== RECHERCHER LABS ==========

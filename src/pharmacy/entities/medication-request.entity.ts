@@ -4,7 +4,6 @@ export enum RequestStatus {
   EN_ATTENTE = 'enAttente',
   VALIDE = 'valide',
   NON_VALIDE = 'nonValide',
-  TERMINE = 'termine',
 }
 
 export class Patient {

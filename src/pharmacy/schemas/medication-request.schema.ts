@@ -7,8 +7,14 @@ export enum RequestStatus {
   EN_ATTENTE = 'enAttente',
   VALIDE = 'valide',
   NON_VALIDE = 'nonValide',
-  TERMINE = 'termine',
 }
+
+export const MedicationRequestStatuses = [
+  RequestStatus.URGENT,
+  RequestStatus.EN_ATTENTE,
+  RequestStatus.VALIDE,
+  RequestStatus.NON_VALIDE,
+] as const;
 
 @Schema({ _id: false })
 export class Patient {
@@ -64,7 +70,7 @@ export class MedicationRequest extends Document {
   @Prop({ type: [RequestedMedication], required: true })
   medications: RequestedMedication[];
 
-  @Prop({ type: String, enum: RequestStatus, default: RequestStatus.EN_ATTENTE })
+  @Prop({ type: String, enum: MedicationRequestStatuses, default: RequestStatus.EN_ATTENTE })
   status: RequestStatus;
 
   @Prop({ default: Date.now })
@@ -87,6 +93,33 @@ export class MedicationRequest extends Document {
 
   @Prop()
   deliveryConfirmedAt?: Date;
+
+  @Prop()
+  nftAssetId?: string;
+
+  @Prop()
+  nftTokenId?: string;
+
+  @Prop()
+  nftMintTxHash?: string;
+
+  @Prop()
+  nftContractAddress?: string;
+
+  @Prop()
+  nftChainId?: number;
+
+  @Prop()
+  patientPharmacyTxHash?: string;
+
+  @Prop()
+  firstResponderRewardMintTxHash?: string;
+
+  @Prop()
+  firstResponderRewardMintedAt?: Date;
+
+  @Prop()
+  firstResponderRewardAmount?: string;
 }
 
 export const MedicationRequestSchema = SchemaFactory.createForClass(MedicationRequest);

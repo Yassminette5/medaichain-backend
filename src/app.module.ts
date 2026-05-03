@@ -42,6 +42,9 @@ import { VideoCallModule } from './video-call/video-call.module';
 // IA pour les médecins (Analyses locales)
 import { DoctorAiModule } from './doctor-ai/doctor-ai.module';
 
+// Token (FRYMN reward system)
+import { TokenModule } from './token/token.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
@@ -79,6 +82,7 @@ import { DoctorAiModule } from './doctor-ai/doctor-ai.module';
     AccessRequestsModule,
     VideoCallModule,
     DoctorAiModule,
+    TokenModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],

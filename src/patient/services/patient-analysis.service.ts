@@ -2,12 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { PatientAnalysis, PatientAnalysisDocument, AnalysisSource } from '../entities/patient-analysis.entity';
+import { NftService } from '../../nft/nft.service';
 
 @Injectable()
 export class PatientAnalysisService {
     constructor(
         @InjectModel(PatientAnalysis.name)
         private patientAnalysisModel: Model<PatientAnalysisDocument>,
+        private nftService: NftService,
     ) {}
 
     async create(
@@ -27,7 +29,15 @@ export class PatientAnalysisService {
             userId: new Types.ObjectId(userId),
             ...data,
         });
-        return analysis.save();
+        const saved = await analysis.save();
+
+        try {
+            await this.nftService.createForPatientAnalysis(saved);
+        } catch (error) {
+            console.error('[PatientAnalysisService] Erreur creation NFT analyse:', error);
+        }
+
+        return saved;
     }
 
     async findAllByUserId(userId: string): Promise<PatientAnalysisDocument[]> {

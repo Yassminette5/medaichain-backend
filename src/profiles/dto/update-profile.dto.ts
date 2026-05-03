@@ -6,6 +6,7 @@ import {
     IsArray,
     IsEnum,
     IsEmail,
+    IsDate,
     Min,
     Max,
 } from 'class-validator';
@@ -436,4 +437,15 @@ export class UpdatePatientProfileDto {
     @IsNumber()
     @Type(() => Number)
     weight?: number;
+
+    @ApiProperty({ example: true, required: false, description: 'Autorisation d’accès temporaire au dossier patient' })
+    @IsOptional()
+    @IsBoolean()
+    temporaryAccessEnabled?: boolean;
+
+    @ApiProperty({ example: '2026-04-30T12:00:00.000Z', required: false, description: 'Date d’expiration de l’accès temporaire' })
+    @IsOptional()
+    @IsDate()
+    @Type(() => Date)
+    temporaryAccessUntil?: Date;
 }

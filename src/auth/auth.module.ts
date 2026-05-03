@@ -9,11 +9,13 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { SeedService } from './seed.service';
 import { UsersModule } from '../users/users.module';
 import { ProfilesModule } from '../profiles/profiles.module';
+import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
     imports: [
         UsersModule,
         forwardRef(() => ProfilesModule),
+        WalletModule,
         PassportModule,
         JwtModule.registerAsync({
             imports: [ConfigModule],

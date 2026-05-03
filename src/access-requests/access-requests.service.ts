@@ -1,16 +1,18 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { AccessRequest, AccessRequestDocument, AccessRequestStatus, AccessRequestUrgency } from './schemas/access-request.schema';
 import { CreateAccessRequestDto } from './dto/create-access-request.dto';
 import { NotificationService } from '../notifications/notification.service';
 import { NotificationType } from '../notifications/notification.schema';
+import { ProfilesService } from '../profiles/profiles.service';
 
 @Injectable()
 export class AccessRequestsService {
   constructor(
     @InjectModel(AccessRequest.name) private accessRequestModel: Model<AccessRequestDocument>,
     private notificationService: NotificationService,
+    @Inject(forwardRef(() => ProfilesService)) private profilesService: ProfilesService,
   ) {}
 
   async create(patientId: string, dto: CreateAccessRequestDto): Promise<AccessRequestDocument> {
@@ -109,4 +111,61 @@ export class AccessRequestsService {
     });
     return request;
   }
+
+    async hasAcceptedAccess(doctorId: string, patientId: string): Promise<boolean> {
+        if (!doctorId || !patientId) return false;
+        const request = await this.accessRequestModel.findOne({
+            doctorId: new Types.ObjectId(doctorId),
+            patientId: new Types.ObjectId(patientId),
+            status: AccessRequestStatus.ACCEPTED,
+        }).select('_id').lean().exec();
+        return !!request;
+    }
+
+    /** Liste de TOUS les patients accessibles au médecin (acceptés + accès temporaire) */
+    async findAccessiblePatientsByDoctor(doctorId: string): Promise<any[]> {
+        // 1. Récupérer les patients avec accès accepté
+        const acceptedPatients = await this.accessRequestModel
+            .find({ doctorId: new Types.ObjectId(doctorId), status: AccessRequestStatus.ACCEPTED })
+            .populate('patientId', 'fullName email phone')
+            .sort({ respondedAt: -1, createdAt: -1 })
+            .lean()
+            .exec();
+
+        // 2. Récupérer tous les patients pour vérifier accès temporaire
+        const allPatients = await this.profilesService.getAllPatients();
+
+        // 3. Créer un set des patientIds avec accès accepté
+        const acceptedPatientIds = new Set(acceptedPatients.map(ar => ar.patientId._id.toString()));
+
+        // 4. Chercher les patients avec accès temporaire actif
+        const tempAccessPatients = [];
+        for (const patient of allPatients) {
+            const patientId = patient._id.toString();
+            // Éviter les doublons
+            if (acceptedPatientIds.has(patientId)) continue;
+
+            // Vérifier si accès temporaire est actif
+            const isTempAccessActive = patient.temporaryAccessEnabled && 
+                                       patient.temporaryAccessUntil && 
+                                       new Date(patient.temporaryAccessUntil) > new Date();
+            
+            if (isTempAccessActive) {
+                tempAccessPatients.push({
+                    patientId: {
+                        _id: patient._id,
+                        fullName: patient.fullName,
+                        email: patient.email,
+                        phone: patient.phone,
+                    },
+                    status: AccessRequestStatus.ACCEPTED,
+                    temporaryAccess: true,
+                    respondedAt: patient.temporaryAccessUntil,
+                });
+            }
+        }
+
+        // 5. Combiner et retourner
+        return [...acceptedPatients, ...tempAccessPatients];
+    }
 }

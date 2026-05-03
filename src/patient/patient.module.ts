@@ -7,6 +7,7 @@ import { PatientAnalysis, PatientAnalysisSchema } from './entities/patient-analy
 import { PatientAnalysisService } from './services/patient-analysis.service';
 import { PatientAnalysisController } from './controllers/patient-analysis.controller';
 import { AuthModule } from '../auth/auth.module';
+import { NftModule } from '../nft/nft.module';
 
 @Module({
     imports: [
@@ -15,6 +16,7 @@ import { AuthModule } from '../auth/auth.module';
             { name: PatientAnalysis.name, schema: PatientAnalysisSchema },
         ]),
         AuthModule,
+        NftModule,
     ],
     controllers: [OcrController, PatientAnalysisController],
     providers: [OcrService, PatientAnalysisService],

@@ -47,7 +47,7 @@ export class PharmacyStatisticsService {
     const requests = await this.requestService.getRequestsByPharmacy(pharmacyId);
     
     // Calculate sales overview
-    const completedRequests = requests.filter(r => r.status === RequestStatus.TERMINE);
+    const completedRequests = requests.filter(r => r.status === RequestStatus.VALIDE);
     const totalSales = completedRequests.reduce((sum, r) => {
       const requestTotal = r.medications.reduce((medSum, med) => medSum + (med.quantity * 100), 0);
       return sum + requestTotal;

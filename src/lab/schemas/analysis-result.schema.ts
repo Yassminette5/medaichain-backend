@@ -29,6 +29,23 @@ export class AnalysisResult {
 
     @Prop()
     notes?: string; // Notes optionnelles
+
+    // Relationship to NftAsset (stores authoritative NFT data)
+    @Prop({ type: Types.ObjectId, ref: 'NftAsset' })
+    nftAssetId?: Types.ObjectId;
+
+    // Convenience fields for quick display
+    @Prop()
+    nftTokenId?: string;
+
+    @Prop()
+    nftMintTxHash?: string;
+
+    @Prop()
+    nftContractAddress?: string;
+
+    @Prop()
+    nftChainId?: number;
 }
 
 export const AnalysisResultSchema = SchemaFactory.createForClass(AnalysisResult);

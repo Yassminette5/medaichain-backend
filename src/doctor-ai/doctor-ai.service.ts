@@ -24,6 +24,19 @@ export interface AiAnalysisResult {
   documentRejected?: boolean;
 }
 
+export interface PrescriptionAnalysisResult {
+  analysis: string;
+  warnings: string[];
+  interactions: Array<{
+    drugs: string[];
+    severity: 'low' | 'medium' | 'high';
+    description: string;
+  }>;
+  recommendations: string[];
+  safe: boolean;
+  confidence: number;
+}
+
 export interface ModelStatus {
   available: boolean;
   provider: 'gemini' | 'llama-server' | 'none';
@@ -147,6 +160,79 @@ return this.analyzeText(extracted, ctx);
 
 // Call the deployed Python Analysis server
 return this.runInference(truncatedText, context);
+  }
+
+  async analyzePrescription(
+    medications: Array<{ name: string; dosage: string; frequency: string; duration: string }>,
+    allergies?: string[],
+    context?: string
+  ): Promise<PrescriptionAnalysisResult> {
+    // Format the prescription data as text for analysis
+    const prescriptionText = medications.map(med =>
+      `${med.name} ${med.dosage} - ${med.frequency} pendant ${med.duration}`
+    ).join('\n');
+
+    const allergiesText = allergies && allergies.length > 0
+      ? `Allergies du patient: ${allergies.join(', ')}`
+      : '';
+
+    const fullContext = [
+      'Analyser cette ordonnance pour détecter les interactions médicamenteuses, contre-indications et problèmes potentiels:',
+      prescriptionText,
+      allergiesText,
+      context || ''
+    ].filter(Boolean).join('\n\n');
+
+    // Call prescription analysis API
+    return this.runPrescriptionInference(fullContext);
+  }
+
+  private async runPrescriptionInference(text: string): Promise<PrescriptionAnalysisResult> {
+    try {
+      this.logger.log(`[KAGGLE API] Envoi de l'analyse d'ordonnance vers ${this.serverUrl} ...`);
+
+      const response = await axios.post(
+        this.serverUrl,
+        {
+          text: text,
+          context: 'prescription_analysis'
+        },
+        {
+          timeout: this.inferenceTimeoutMs,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
+
+      this.logger.log(`[KAGGLE API] Analyse d'ordonnance réussie avec le statut: ${response.status}`);
+
+      if (!response.data || !response.data.success) {
+        throw new Error(response.data?.error || "Error from Python backend");
+      }
+
+      // Parse the response for prescription analysis
+      const data = response.data.data;
+      return {
+        analysis: data.analysis || data.diagnosis || 'Analyse non disponible',
+        warnings: data.warnings || [],
+        interactions: data.interactions || [],
+        recommendations: data.recommendations || [],
+        safe: data.safe !== false,
+        confidence: data.confidence || 0.5
+      };
+    } catch (e: any) {
+      if (e.response) {
+        this.logger.error(`[KAGGLE API ERREUR REPONSE] : Status = ${e.response.status}, Data = ${JSON.stringify(e.response.data)}`);
+      } else if (e.request) {
+        this.logger.error(`[KAGGLE API HORS LIGNE] : Aucune réponse du serveur Kaggle / Ngrok à l'URL ${this.serverUrl}. Vérifiez si le notebook Kaggle tourne toujours.`);
+      } else {
+        this.logger.error(`[KAGGLE API ERREUR EXÉCUTION] : ${e.message}`);
+      }
+
+      throw new HttpException(
+        `Erreur lors de l'analyse d'ordonnance (Serveur IA Kaggle injoignable ou erreur interne). Détail: ${e.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   private async runInference(text: string, context ?: string): Promise < AiAnalysisResult > {

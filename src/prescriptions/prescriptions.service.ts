@@ -10,6 +10,8 @@ import { UsersService } from '../users/users.service';
 import { WalletService } from '../wallet/wallet.service';
 import { UserRole } from '../users/schemas/user.schema';
 import { NftAssetType } from '../nft/schemas/nft-asset.schema';
+import { DoctorAiService } from '../doctor-ai/doctor-ai.service';
+import { ProfilesService } from '../profiles/profiles.service';
 
 @Injectable()
 export class PrescriptionsService {
@@ -22,6 +24,8 @@ export class PrescriptionsService {
         private nftService: NftService,
         private usersService: UsersService,
         private walletService: WalletService,
+        private doctorAiService: DoctorAiService,
+        private profilesService: ProfilesService,
     ) { }
 
     // ========== CRÉER UNE ORDONNANCE (MÉDECIN) ==========
@@ -33,6 +37,37 @@ export class PrescriptionsService {
             prescriptionDate: new Date(),
             status: 'active',
         });
+
+        // Perform AI analysis of the prescription, using patient allergies from profile if available
+        try {
+            const patientProfile = await this.profilesService.getProfile(
+                createPrescriptionDto.patientId,
+                UserRole.PATIENT,
+            );
+            const patientAllergies = Array.isArray(patientProfile?.allergies)
+                ? patientProfile.allergies
+                : [];
+
+            const analysisResult = await this.doctorAiService.analyzePrescription(
+                createPrescriptionDto.medications || [],
+                patientAllergies,
+                createPrescriptionDto.notes,
+            );
+
+            prescription.analysis = {
+                ...analysisResult,
+                analyzedAt: new Date(),
+            };
+        } catch (analysisError) {
+            console.error('[PrescriptionsService] AI analysis failed:', analysisError);
+            // Continue without analysis - don't fail prescription creation
+            prescription.analysis = {
+                analysis: 'Analyse non disponible',
+                safe: true,
+                confidence: 0,
+                analyzedAt: new Date(),
+            };
+        }
 
         const saved = await prescription.save();
 

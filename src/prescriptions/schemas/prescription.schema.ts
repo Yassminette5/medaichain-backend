@@ -20,6 +20,37 @@ export class Medication {
     instructions?: string;
 }
 
+export class PrescriptionAnalysis {
+    @Prop()
+    analysis?: string;
+
+    @Prop({ type: [String] })
+    warnings?: string[];
+
+    @Prop({ type: [{
+        drugs: [String],
+        severity: { type: String, enum: ['low', 'medium', 'high'] },
+        description: String
+    }] })
+    interactions?: Array<{
+        drugs: string[];
+        severity: 'low' | 'medium' | 'high';
+        description: string;
+    }>;
+
+    @Prop({ type: [String] })
+    recommendations?: string[];
+
+    @Prop({ default: true })
+    safe?: boolean;
+
+    @Prop()
+    confidence?: number;
+
+    @Prop()
+    analyzedAt?: Date;
+}
+
 @Schema({ timestamps: true })
 export class Prescription {
     @Prop({ type: Types.ObjectId, ref: 'User', required: true })
@@ -45,6 +76,10 @@ export class Prescription {
 
     @Prop()
     prescriptionDate: Date;
+
+    // AI Analysis results
+    @Prop({ type: PrescriptionAnalysis })
+    analysis?: PrescriptionAnalysis;
 
     // Relationship to NftAsset (stores all authoritative NFT data)
     @Prop({ type: Types.ObjectId, ref: 'NftAsset' })

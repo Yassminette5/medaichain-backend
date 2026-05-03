@@ -6,6 +6,7 @@ import { PatientAnalysisService } from '../patient/services/patient-analysis.ser
 import { DoctorAiService } from './doctor-ai.service';
 import { AnalyzeReportDto } from './dto/analyze-report.dto';
 import { AnalyzeTextDto } from './dto/analyze-text.dto';
+import { AnalyzePrescriptionDto } from './dto/analyze-prescription.dto';
 import { CreateAiPrescriptionDto } from './dto/create-ai-prescription.dto';
 import { PrescriptionsService } from '../prescriptions/prescriptions.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -51,6 +52,15 @@ export class DoctorAiController {
   async analyzeText(@Body() analyzeTextDto: AnalyzeTextDto) {
     const { text, context } = analyzeTextDto;
     return this.doctorAiService.analyzeText(text, context);
+  }
+
+  @Post('analyze-prescription')
+  @Roles(UserRole.MEDECIN, UserRole.ADMIN)
+  @UseGuards(SubscriptionGuard)
+  @ApiOperation({ summary: 'Analyser une ordonnance pour détecter les interactions médicamenteuses et problèmes potentiels' })
+  async analyzePrescription(@Body() analyzePrescriptionDto: AnalyzePrescriptionDto) {
+    const { medications, allergies, context } = analyzePrescriptionDto;
+    return this.doctorAiService.analyzePrescription(medications, allergies, context);
   }
 
   @Post('analyze-upload')

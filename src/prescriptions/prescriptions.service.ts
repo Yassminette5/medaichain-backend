@@ -12,6 +12,7 @@ import { UserRole } from '../users/schemas/user.schema';
 import { NftAssetType } from '../nft/schemas/nft-asset.schema';
 import { DoctorAiService } from '../doctor-ai/doctor-ai.service';
 import { ProfilesService } from '../profiles/profiles.service';
+import { PrescriptionAnalysisService } from '../pharmacy/prescription-analysis.service';
 
 @Injectable()
 export class PrescriptionsService {
@@ -26,6 +27,7 @@ export class PrescriptionsService {
         private walletService: WalletService,
         private doctorAiService: DoctorAiService,
         private profilesService: ProfilesService,
+        private prescriptionAnalysisService: PrescriptionAnalysisService,
     ) { }
 
     // ========== CRÉER UNE ORDONNANCE (MÉDECIN) ==========
@@ -38,26 +40,63 @@ export class PrescriptionsService {
             status: 'active',
         });
 
-        // Perform AI analysis of the prescription, using patient allergies from profile if available
+        // Perform AI analysis of the prescription.
+        // Priority: OCR-based medication extraction from image (same behavior as pharmacy flow).
+        // Fallback: remote prescription interaction analysis (DoctorAiService) when no image is provided.
         try {
-            const patientProfile = await this.profilesService.getProfile(
-                createPrescriptionDto.patientId,
-                UserRole.PATIENT,
-            );
-            const patientAllergies = Array.isArray(patientProfile?.allergies)
-                ? patientProfile.allergies
-                : [];
+            const imageUrl = String(createPrescriptionDto.prescriptionImageUrl || '').trim();
 
-            const analysisResult = await this.doctorAiService.analyzePrescription(
-                createPrescriptionDto.medications || [],
-                patientAllergies,
-                createPrescriptionDto.notes,
-            );
+            if (imageUrl) {
+                const meds = await this.prescriptionAnalysisService.extractMedicationsFromImageUrl(imageUrl);
+                const analyzedAt = new Date();
 
-            prescription.analysis = {
-                ...analysisResult,
-                analyzedAt: new Date(),
-            };
+                if (meds.length > 0) {
+                    const lines = meds
+                        .map((m) => `- ${m.name}${m.dosage ? ` (${m.dosage})` : ''}`)
+                        .join('\n');
+
+                    prescription.analysis = {
+                        analysis: `Médicaments détectés depuis l'image :\n${lines}`,
+                        warnings: [],
+                        recommendations: [
+                            "Vérifiez la liste détectée avant validation.",
+                        ],
+                        safe: true,
+                        confidence: 0.6,
+                        analyzedAt,
+                    };
+                } else {
+                    prescription.analysis = {
+                        analysis: "Aucun médicament n'a été détecté sur l'image.",
+                        warnings: [
+                            "Essayez une photo plus nette, bien éclairée et cadrée.",
+                        ],
+                        recommendations: [],
+                        safe: false,
+                        confidence: 0.2,
+                        analyzedAt,
+                    };
+                }
+            } else {
+                const patientProfile = await this.profilesService.getProfile(
+                    createPrescriptionDto.patientId,
+                    UserRole.PATIENT,
+                );
+                const patientAllergies = Array.isArray(patientProfile?.allergies)
+                    ? patientProfile.allergies
+                    : [];
+
+                const analysisResult = await this.doctorAiService.analyzePrescription(
+                    createPrescriptionDto.medications || [],
+                    patientAllergies,
+                    createPrescriptionDto.notes,
+                );
+
+                prescription.analysis = {
+                    ...analysisResult,
+                    analyzedAt: new Date(),
+                };
+            }
         } catch (analysisError) {
             console.error('[PrescriptionsService] AI analysis failed:', analysisError);
             // Continue without analysis - don't fail prescription creation
@@ -110,15 +149,31 @@ export class PrescriptionsService {
         try {
             const patientUserId = String(createPrescriptionDto.patientId ?? saved.patientId?.toString() ?? '');
             if (patientUserId) {
+                const title = 'Nouvelle ordonnance';
+                const message = 'Vous avez reçu une nouvelle ordonnance de votre médecin.';
+
                 await this.notificationService.createNotification({
                     userId: patientUserId,
-                    title: 'Nouvelle ordonnance',
-                    message: 'Vous avez reçu une nouvelle ordonnance de votre médecin.',
+                    title,
+                    message,
                     type: NotificationType.PRESCRIPTION_UPDATE,
                     relatedId: saved._id.toString(),
                     data: {
+                        type: 'patient_prescription_created',
                         prescriptionId: saved._id.toString(),
                         status: 'active',
+                    },
+                });
+
+                await this.notificationService.sendPushToUser({
+                    userId: patientUserId,
+                    title,
+                    message,
+                    payload: {
+                        type: 'patient_prescription_created',
+                        prescriptionId: saved._id.toString(),
+                        documentType: 'prescription',
+                        documentId: saved._id.toString(),
                     },
                 });
             }
@@ -238,13 +293,32 @@ export class PrescriptionsService {
             };
             const message = statusMessages[normalizedStatus] || `Le statut de votre ordonnance a été mis à jour : ${normalizedStatus}`;
 
+            const title = 'Mise à jour ordonnance';
+
             await this.notificationService.createNotification({
                 userId: prescription.patientId.toString(),
-                title: 'Mise à jour ordonnance',
+                title,
                 message,
                 type: NotificationType.PRESCRIPTION_UPDATE,
                 relatedId: id,
-                data: { prescriptionId: id, status: normalizedStatus },
+                data: { 
+                    type: 'patient_prescription_status_updated',
+                    prescriptionId: id,
+                    status: normalizedStatus,
+                },
+            });
+
+            await this.notificationService.sendPushToUser({
+                userId: prescription.patientId.toString(),
+                title,
+                message,
+                payload: {
+                    type: 'patient_prescription_status_updated',
+                    prescriptionId: id,
+                    status: normalizedStatus,
+                    documentType: 'prescription',
+                    documentId: id,
+                },
             });
         } catch (error) {
             console.error('[PrescriptionsService] Erreur notification statut:', error);
@@ -337,6 +411,46 @@ export class PrescriptionsService {
             );
         } catch (error) {
             throw new BadRequestException('Mint on-chain échoué pour cette ordonnance');
+        }
+
+        // Notifier la pharmacie qu'une ordonnance a été partagée
+        try {
+            const patientProfile = await this.profilesService
+                .getProfile(patientId, UserRole.PATIENT)
+                .catch(() => null);
+            const patientName =
+                (patientProfile as any)?.fullName ||
+                (patientProfile as any)?.name ||
+                'Un patient';
+
+            const title = 'Nouvelle ordonnance partagée';
+            const message = `${patientName} a partagé une ordonnance avec vous.`;
+
+            await this.notificationService.createNotification({
+                userId: pharmacyId,
+                title,
+                message,
+                type: NotificationType.PHARMACY_MESSAGE,
+                relatedId: prescriptionId,
+                data: {
+                    type: 'pharmacy_prescription_shared',
+                    prescriptionId,
+                    patientId,
+                },
+            });
+
+            await this.notificationService.sendPushToUser({
+                userId: pharmacyId,
+                title,
+                message,
+                payload: {
+                    type: 'pharmacy_prescription_shared',
+                    prescriptionId,
+                    patientId,
+                },
+            });
+        } catch (err) {
+            console.error('[PrescriptionsService] Erreur notification partage pharmacie:', err);
         }
 
         return this.nftService.shareAsset({
@@ -502,6 +616,53 @@ export class PrescriptionsService {
 
         if (ops.length > 0) {
             await this.sharedPrescriptionModel.bulkWrite(ops);
+        }
+
+        // Notify pharmacies (one push per pharmacy; deep-link uses the first shared prescription)
+        try {
+            const patientProfile = await this.profilesService
+                .getProfile(patientId, UserRole.PATIENT)
+                .catch(() => null);
+            const patientName =
+                (patientProfile as any)?.fullName ||
+                (patientProfile as any)?.name ||
+                'Un patient';
+
+            const firstPrescriptionId = validPrescriptionIds[0];
+            const count = validPrescriptionIds.length;
+            const title = 'Nouvelle ordonnance partagée';
+
+            for (const pharmacyId of pharmacyIds) {
+                const message = `${patientName} a partagé ${count} ordonnance(s) avec vous.`;
+
+                await this.notificationService.createNotification({
+                    userId: pharmacyId,
+                    title,
+                    message,
+                    type: NotificationType.PHARMACY_MESSAGE,
+                    relatedId: firstPrescriptionId,
+                    data: {
+                        type: 'pharmacy_prescription_shared',
+                        prescriptionId: firstPrescriptionId,
+                        patientId,
+                        count: String(count),
+                    },
+                });
+
+                await this.notificationService.sendPushToUser({
+                    userId: pharmacyId,
+                    title,
+                    message,
+                    payload: {
+                        type: 'pharmacy_prescription_shared',
+                        prescriptionId: firstPrescriptionId,
+                        patientId,
+                        count: String(count),
+                    },
+                });
+            }
+        } catch (err) {
+            console.error('[PrescriptionsService] Erreur notification simple-share pharmacie:', err);
         }
 
         return {

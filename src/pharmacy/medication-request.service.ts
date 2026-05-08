@@ -21,6 +21,7 @@ import { UsersService } from '../users/users.service';
 import { WalletService } from '../wallet/wallet.service';
 import { WalletChainService } from '../wallet/wallet-chain.service';
 import { TokenService } from '../token/token.service';
+import { UserRole } from '../users/schemas/user.schema';
 
 @Injectable()
 export class MedicationRequestService {
@@ -349,10 +350,70 @@ export class MedicationRequestService {
 
     const wasValidatedBefore = currentRequest.status === RequestStatus.VALIDE;
     const isNowValidated = updatedRequest.status === RequestStatus.VALIDE;
+    const isNowRejected = updatedRequest.status === RequestStatus.NON_VALIDE;
     const wasUrgentRequest = currentRequest.status === RequestStatus.URGENT;
     const rewardAlreadyMinted = Boolean(
       (updatedRequest as any).firstResponderRewardMintTxHash,
     );
+
+    // Notify patient when the pharmacy validates/rejects the request.
+    // Per product requirement: tapping this patient notification should NOT navigate anywhere.
+    try {
+      const patientId = updatedRequest.patient?.id;
+      if (patientId && (isNowValidated || isNowRejected)) {
+        const pharmacyProfile = await this.profilesService
+          .getProfile(pharmacyId, UserRole.PHARMACIE)
+          .catch(() => null);
+        const pharmacyName =
+          (pharmacyProfile as any)?.pharmacyName ||
+          (pharmacyProfile as any)?.name ||
+          'Votre pharmacie';
+
+        const title = isNowValidated
+          ? 'Demande validée ✅'
+          : 'Demande non validée ❌';
+        const message = isNowValidated
+          ? `${pharmacyName} a validé votre demande.`
+          : `${pharmacyName} n'a pas validé votre demande.`;
+
+        const type = isNowValidated
+          ? 'pharmacy_request_validated'
+          : 'pharmacy_request_rejected';
+
+        await this.notificationService.createNotification({
+          userId: patientId,
+          type: NotificationType.PHARMACY_MESSAGE,
+          title,
+          message,
+          relatedId: requestId,
+          data: {
+            type,
+            requestId,
+            pharmacyId,
+            pharmacyName,
+            navigate: 'false',
+          },
+        });
+
+        await this.notificationService.sendPushToUser({
+          userId: patientId,
+          title,
+          message,
+          payload: {
+            type,
+            requestId,
+            pharmacyId,
+            pharmacyName,
+            navigate: 'false',
+          },
+        });
+      }
+    } catch (error) {
+      this.logger.error(
+        `[MedicationRequestService] Failed to notify patient for request ${requestId}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
 
     if (!wasValidatedBefore && wasUrgentRequest && isNowValidated && !rewardAlreadyMinted) {
       try {

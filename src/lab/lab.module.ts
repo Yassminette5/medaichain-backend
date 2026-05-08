@@ -9,6 +9,7 @@ import { UsersModule } from '../users/users.module';
 import { ProfilesModule } from '../profiles/profiles.module';
 import { AccessRequestsModule } from '../access-requests/access-requests.module';
 import { NftModule } from '../nft/nft.module';
+import { NotificationModule } from '../notifications/notification.module';
 
 @Module({
     imports: [
@@ -20,6 +21,7 @@ import { NftModule } from '../nft/nft.module';
         ProfilesModule,
         AccessRequestsModule,
         NftModule,
+        NotificationModule,
     ],
     controllers: [LabController],
     providers: [LabService, AnalysisResultsService],

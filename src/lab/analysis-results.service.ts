@@ -5,6 +5,8 @@ import { AnalysisResult, AnalysisResultDocument } from './schemas/analysis-resul
 import { UsersService } from '../users/users.service';
 import { NftService } from '../nft/nft.service';
 import { LabService } from './lab.service';
+import { NotificationService } from '../notifications/notification.service';
+import { NotificationType } from '../notifications/notification.schema';
 
 @Injectable()
 export class AnalysisResultsService {
@@ -13,6 +15,7 @@ export class AnalysisResultsService {
         private readonly usersService: UsersService,
         private readonly nftService: NftService,
         private readonly labService: LabService,
+        private readonly notificationService: NotificationService,
     ) {}
 
     // ========== CRÉER UN RÉSULTAT D'ANALYSE ==========
@@ -45,6 +48,41 @@ export class AnalysisResultsService {
 
         try {
             const patient = await this.usersService.findByEmail(data.patientEmail);
+            if (patient?._id) {
+                const labProfile = await this.labService.getLabById(labId).catch(() => null);
+                const centreName = (labProfile as any)?.centreName || (labProfile as any)?.name || 'Centre d\'analyse';
+
+                const title = 'Résultat d\'analyse disponible';
+                const message = `Votre résultat d'analyse est disponible (${centreName}).`;
+
+                await this.notificationService.createNotification({
+                    userId: patient._id.toString(),
+                    type: NotificationType.SYSTEM_ALERT,
+                    title,
+                    message,
+                    relatedId: saved._id.toString(),
+                    data: {
+                        type: 'patient_analysis_result_created',
+                        analysisResultId: saved._id.toString(),
+                        documentType: 'analysis',
+                        documentId: saved._id.toString(),
+                        centreName,
+                    },
+                });
+
+                await this.notificationService.sendPushToUser({
+                    userId: patient._id.toString(),
+                    title,
+                    message,
+                    payload: {
+                        type: 'patient_analysis_result_created',
+                        analysisResultId: saved._id.toString(),
+                        documentType: 'analysis',
+                        documentId: saved._id.toString(),
+                    },
+                });
+            }
+
             if (!patient?.walletAddress) {
                 console.warn('[AnalysisResultsService] Wallet missing for analysis NFT mint');
                 return saved;

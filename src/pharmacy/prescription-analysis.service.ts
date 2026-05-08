@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { promises as fs } from 'fs';
+import { join } from 'path';
 
 export interface AnalyzedMedication {
   name: string;
@@ -15,16 +17,103 @@ export class PrescriptionAnalysisService {
   );
 
   private get baseUrl(): string {
-    return PrescriptionAnalysisService.KAGGLE_API_BASE_URL.trim().replace(
-      /\/$/,
-      '',
+
+
+    const raw = ( PrescriptionAnalysisService.KAGGLE_API_BASE_URL)
+      .trim();
+    return raw.replace(/\/$/, '');
+  }
+
+  private async tryReadLocalPrescriptionUpload(
+    anyUrl: string,
+  ): Promise<
+    | {
+        arrayBuffer: ArrayBuffer;
+        byteLength: number;
+        contentType: string;
+        fileName: string;
+      }
+    | null
+  > {
+    const raw = (anyUrl || '').trim();
+    if (!raw) return null;
+
+    let pathname = raw;
+    try {
+      if (/^https?:\/\//i.test(raw)) {
+        pathname = new URL(raw).pathname;
+      }
+    } catch {
+      // ignore
+    }
+
+    const matchUploads = pathname.match(/\/uploads\/prescriptions\/([^/?#]+)$/i);
+    const matchProxy = pathname.match(
+      /\/pharmacy\/uploads\/prescriptions\/([^/?#]+)$/i,
     );
+    const fileName = (matchUploads || matchProxy)?.[1];
+    if (!fileName) return null;
+
+    // Basic traversal protection.
+    if (fileName.includes('..') || fileName.includes('/') || fileName.includes('\\')) {
+      return null;
+    }
+
+    const filePath = join(process.cwd(), 'uploads', 'prescriptions', fileName);
+
+    try {
+      const fileBuffer = await fs.readFile(filePath);
+      const lower = fileName.toLowerCase();
+      const contentType = lower.endsWith('.png')
+        ? 'image/png'
+        : lower.endsWith('.gif')
+          ? 'image/gif'
+          : lower.endsWith('.webp')
+            ? 'image/webp'
+            : 'image/jpeg';
+
+      const uint8 = new Uint8Array(fileBuffer);
+      const arrayBuffer = uint8.buffer.slice(
+        uint8.byteOffset,
+        uint8.byteOffset + uint8.byteLength,
+      );
+
+      return {
+        arrayBuffer,
+        byteLength: uint8.byteLength,
+        contentType,
+        fileName,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private resolveImageUrl(imageUrl: string): string {
+    const raw = (imageUrl || '').trim();
+    if (!raw) return '';
+
+    if (/^https?:\/\//i.test(raw)) {
+      return raw;
+    }
+
+    const publicBase = (process.env.BACKEND_PUBLIC_URL || '').trim().replace(/\/$/, '');
+    if (!publicBase) {
+      return raw;
+    }
+
+    if (raw.startsWith('/')) {
+      return `${publicBase}${raw}`;
+    }
+    return `${publicBase}/${raw}`;
   }
 
   async extractMedicationsFromImageUrl(
     imageUrl: string,
   ): Promise<AnalyzedMedication[]> {
-    if (!this.baseUrl || !imageUrl?.trim()) {
+    const resolvedImageUrl = this.resolveImageUrl(imageUrl);
+
+    if (!this.baseUrl || !resolvedImageUrl?.trim()) {
       return [];
     }
 
@@ -34,52 +123,71 @@ export class PrescriptionAnalysisService {
     const startedAt = Date.now();
     let alreadyLoggedDetailedError = false;
 
-    let imageResponse: Response;
-    try {
-      imageResponse = await fetch(imageUrl);
-    } catch (error) {
-      console.error(
-        '[PrescriptionAnalysisService] Image download failed',
-        this.buildLogContext({
-          requestId,
-          imageUrl,
-          baseUrl: this.baseUrl,
-          elapsedMs: Date.now() - startedAt,
-          error: this.formatErrorForLog(error),
-        }),
-      );
-      alreadyLoggedDetailedError = true;
-      this.markErrorLogged(error);
-      throw error;
+    // Prefer local disk for uploaded prescriptions to avoid 404/network issues.
+    const localUpload =
+      (await this.tryReadLocalPrescriptionUpload(imageUrl)) ||
+      (await this.tryReadLocalPrescriptionUpload(resolvedImageUrl));
+
+    let contentType = 'application/octet-stream';
+    let imageBuffer: ArrayBuffer;
+    let imageBytes = 0;
+    let fileName = this.extractFileName(resolvedImageUrl);
+
+    if (localUpload) {
+      contentType = localUpload.contentType;
+      imageBuffer = localUpload.arrayBuffer;
+      imageBytes = localUpload.byteLength;
+      fileName = localUpload.fileName;
+    } else {
+      let imageResponse: Response;
+      try {
+        imageResponse = await fetch(resolvedImageUrl);
+      } catch (error) {
+        console.error(
+          '[PrescriptionAnalysisService] Image download failed',
+          this.buildLogContext({
+            requestId,
+            imageUrl: resolvedImageUrl,
+            originalImageUrl: (imageUrl || '').trim(),
+            baseUrl: this.baseUrl,
+            elapsedMs: Date.now() - startedAt,
+            error: this.formatErrorForLog(error),
+          }),
+        );
+        alreadyLoggedDetailedError = true;
+        this.markErrorLogged(error);
+        throw error;
+      }
+
+      if (!imageResponse.ok) {
+        const imageErrorBody = await this.safeReadResponseText(imageResponse);
+        console.error(
+          '[PrescriptionAnalysisService] Image download returned non-OK response',
+          this.buildLogContext({
+            requestId,
+            imageUrl: resolvedImageUrl,
+            originalImageUrl: (imageUrl || '').trim(),
+            status: imageResponse.status,
+            statusText: imageResponse.statusText,
+            contentType: imageResponse.headers.get('content-type'),
+            responseBodySnippet: this.truncateForLog(imageErrorBody),
+          }),
+        );
+        alreadyLoggedDetailedError = true;
+
+        const downloadError = new Error(
+          `Unable to download prescription image (${imageResponse.status})`,
+        );
+        this.markErrorLogged(downloadError);
+        throw downloadError;
+      }
+
+      contentType =
+        imageResponse.headers.get('content-type') ||
+        'application/octet-stream';
+      imageBuffer = await imageResponse.arrayBuffer();
+      imageBytes = imageBuffer.byteLength;
     }
-
-    if (!imageResponse.ok) {
-      const imageErrorBody = await this.safeReadResponseText(imageResponse);
-      console.error(
-        '[PrescriptionAnalysisService] Image download returned non-OK response',
-        this.buildLogContext({
-          requestId,
-          imageUrl,
-          status: imageResponse.status,
-          statusText: imageResponse.statusText,
-          contentType: imageResponse.headers.get('content-type'),
-          responseBodySnippet: this.truncateForLog(imageErrorBody),
-        }),
-      );
-      alreadyLoggedDetailedError = true;
-
-      const downloadError = new Error(
-        `Unable to download prescription image (${imageResponse.status})`,
-      );
-      this.markErrorLogged(downloadError);
-      throw downloadError;
-    }
-
-    const contentType =
-      imageResponse.headers.get('content-type') || 'application/octet-stream';
-    const imageBuffer = await imageResponse.arrayBuffer();
-    const imageBytes = imageBuffer.byteLength;
-
     if (imageBytes === 0) {
       console.error(
         '[PrescriptionAnalysisService] Downloaded image is empty (0 bytes)',
@@ -92,7 +200,6 @@ export class PrescriptionAnalysisService {
     }
 
     const blob = new Blob([imageBuffer], { type: contentType });
-    const fileName = this.extractFileName(imageUrl);
 
     try {
       let response: Response;
@@ -148,7 +255,7 @@ export class PrescriptionAnalysisService {
           `[PrescriptionAnalysisService] Kaggle OCR request ${aborted ? 'aborted' : 'failed'}`,
           this.buildLogContext({
             requestId,
-            imageUrl,
+            imageUrl: resolvedImageUrl,
             baseUrl: this.baseUrl,
             imageBytes,
             elapsedMs: Date.now() - kaggleStartedAt,
@@ -167,7 +274,7 @@ export class PrescriptionAnalysisService {
           '[PrescriptionAnalysisService] Kaggle OCR returned non-OK response',
           this.buildLogContext({
             requestId,
-            imageUrl,
+            imageUrl: resolvedImageUrl,
             baseUrl: this.baseUrl,
             imageBytes,
             status: response.status,
@@ -195,7 +302,7 @@ export class PrescriptionAnalysisService {
           '[PrescriptionAnalysisService] Kaggle OCR returned invalid JSON',
           this.buildLogContext({
             requestId,
-            imageUrl,
+            imageUrl: resolvedImageUrl,
             baseUrl: this.baseUrl,
             status: response.status,
             statusText: response.statusText,
@@ -238,7 +345,7 @@ export class PrescriptionAnalysisService {
           '[PrescriptionAnalysisService] Prescription image analysis failed',
           this.buildLogContext({
             requestId,
-            imageUrl,
+            imageUrl: resolvedImageUrl,
             baseUrl: this.baseUrl,
             elapsedMs: Date.now() - startedAt,
             aborted: this.isAbortError(error),

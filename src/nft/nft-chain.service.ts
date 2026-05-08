@@ -134,7 +134,11 @@ export class NftChainService {
     if (!rpcUrl) {
       throw new Error('POLYGON_RPC_URL is not set');
     }
-    return new ethers.JsonRpcProvider(rpcUrl, this.getChainId());
+    const provider = new ethers.JsonRpcProvider(rpcUrl, this.getChainId());
+    provider.on('error', (err) => {
+      this.logger.debug(`Provider background error: ${err?.message || err}`);
+    });
+    return provider;
   }
 
   private getContractAddress(): string {

@@ -9,6 +9,16 @@ import { join } from 'path';
 const BODY_LIMIT = process.env.REQUEST_BODY_LIMIT || '25mb';
 
 async function bootstrap() {
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    // Empêche le crash du serveur (utile pour les erreurs ethers.js en arrière-plan)
+  });
+
+  process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    // Empêche le crash du serveur
+  });
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: false,
   });

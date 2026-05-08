@@ -55,9 +55,15 @@ export class LabAppointmentsService {
 
     // ========== CRÉER UN RENDEZ-VOUS (PATIENT) ==========
     async createAppointment(patientId: string, data: Partial<LabAppointment>): Promise<LabAppointmentDocument> {
-        // Vérifier que la date n'est pas dans le passé
-        if (data.appointmentDate && new Date(data.appointmentDate) < new Date()) {
-            throw new BadRequestException('La date du rendez-vous ne peut pas être dans le passé');
+        // Vérifier que la date n'est pas dans le passé (comparaison par jour, pas par heure)
+        if (data.appointmentDate) {
+            const apptDate = new Date(data.appointmentDate);
+            const today = new Date();
+            apptDate.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0);
+            if (apptDate < today) {
+                throw new BadRequestException('La date du rendez-vous ne peut pas être dans le passé');
+            }
         }
 
         // Résoudre le labId depuis la payload ou depuis le centreName
@@ -100,9 +106,9 @@ export class LabAppointmentsService {
                 ? (data.subscriptionTier as SubscriptionTier)
                 : SubscriptionTier.FREE;
 
-        console.log(`[LabAppointments] Tier (info seulement, n’influence pas le ML): "${subscriptionTier}"`);
+        console.log(`[LabAppointments] Tier du patient: "${subscriptionTier}"`);
 
-        // ── Statut uniquement selon le modèle ML (predict-ml-api) : pas de forçage Premium / Plus ──
+        // ── Statut selon le modèle ML (predict-ml-api) ──
         let status: 'accepted' | 'pending' = 'pending';
 
         try {
@@ -236,8 +242,14 @@ export class LabAppointmentsService {
     // ========== MODIFIER UN RENDEZ-VOUS (PATIENT) ==========
     async updateAppointment(appointmentId: string, patientId: string, data: Partial<LabAppointment>): Promise<LabAppointmentDocument> {
         const appt = await this.getAppointmentById(appointmentId, patientId);
-        if (data.appointmentDate && new Date(data.appointmentDate) < new Date()) {
-            throw new BadRequestException('La date du rendez-vous ne peut pas être dans le passé');
+        if (data.appointmentDate) {
+            const apptDate = new Date(data.appointmentDate);
+            const today = new Date();
+            apptDate.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0);
+            if (apptDate < today) {
+                throw new BadRequestException('La date du rendez-vous ne peut pas être dans le passé');
+            }
         }
         if (data.analysisType && typeof data.analysisType === 'string') {
             const val = data.analysisType as string;
@@ -255,7 +267,6 @@ export class LabAppointmentsService {
         await this.labAppointmentModel.deleteOne({ _id: appt._id }).exec();
     }
 
-    // ========== CONSTRUIRE LES INFOS PATIENT ENRICHIES (helper privé) ==========
     private async buildPatientInfo(patientUser: any, patientIdStr: string): Promise<Record<string, any>> {
         const base = {
             fullName: '',
@@ -272,13 +283,31 @@ export class LabAppointmentsService {
         try {
             const profile = await this.profilesService.getProfile(patientIdStr, UserRole.PATIENT);
             if (profile) {
-                base.fullName         = profile.fullName         || '';
-                base.age              = profile.age              ?? null;
-                base.gender           = profile.gender           ?? null;
-                base.allergies        = profile.allergies        || [];
-                base.chronicDiseases  = profile.chronicDiseases  || [];
-                base.height           = profile.height           ?? null;
-                base.weight           = profile.weight           ?? null;
+                // Vérification du contrôle d'accès
+                let hasAccess = true;
+                if (profile.temporaryAccessEnabled !== undefined) {
+                    if (!profile.temporaryAccessEnabled) {
+                        hasAccess = false;
+                    } else if (profile.temporaryAccessUntil && new Date(profile.temporaryAccessUntil) < new Date()) {
+                        hasAccess = false; // Expired
+                    }
+                }
+
+                if (!hasAccess) {
+                    base.fullName = 'Accès Restreint';
+                    base.email = 'anonyme@patient.com';
+                    base.phone = '******';
+                    base.allergies = [];
+                    base.chronicDiseases = [];
+                } else {
+                    base.fullName         = profile.fullName         || '';
+                    base.age              = profile.age              ?? null;
+                    base.gender           = profile.gender           ?? null;
+                    base.allergies        = profile.allergies        || [];
+                    base.chronicDiseases  = profile.chronicDiseases  || [];
+                    base.height           = profile.height           ?? null;
+                    base.weight           = profile.weight           ?? null;
+                }
             }
         } catch {
             /* silencieux — on renvoie les champs de base */
@@ -303,6 +332,20 @@ export class LabAppointmentsService {
                 const patientIdStr = patientUser?._id?.toString() || patientUser?.toString();
 
                 obj.patientInfo = await this.buildPatientInfo(patientUser, patientIdStr);
+                
+                // Injecter dans patientId pour compatibilité avec le frontend (masquage email)
+                if (typeof obj.patientId === 'object' && obj.patientId !== null) {
+                    if (obj.patientInfo?.fullName === 'Accès Restreint') {
+                        // Le patient a bloqué l'accès : on ne renvoie pas l'objet patientId pour le cacher du frontend
+                        obj.patientId = null;
+                    } else {
+                        obj.patientId = {
+                            ...obj.patientId,
+                            ...obj.patientInfo,
+                        };
+                    }
+                }
+                
                 return obj;
             })
         );

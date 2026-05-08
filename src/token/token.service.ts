@@ -43,6 +43,9 @@ export class TokenService {
     }
 
     this.provider = new ethers.JsonRpcProvider(rpcUrl);
+    this.provider.on('error', (err) => {
+      this.logger.debug(`Provider background error: ${err?.message || err}`);
+    });
     this.signerWallet = new ethers.Wallet(minterPrivateKey, this.provider);
     this.contract = new ethers.Contract(
       this.tokenAddress,

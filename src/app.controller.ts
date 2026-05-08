@@ -17,4 +17,16 @@ export class AppController {
     const filePath = join(process.cwd(), 'public', 'signup.html');
     return res.sendFile(filePath);
   }
+
+  @Get('signup.js')
+  getSignupJs(@Res() res: Response) {
+    const filePath = join(process.cwd(), 'public', 'signup.js');
+    return res.sendFile(filePath);
+  }
+
+  @Get('style.css')
+  getStyleCss(@Res() res: Response) {
+    const filePath = join(process.cwd(), 'public', 'style.css');
+    return res.sendFile(filePath);
+  }
 }

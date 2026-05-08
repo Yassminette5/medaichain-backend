@@ -83,7 +83,11 @@ export class WalletChainService {
       throw new Error('POLYGON_RPC_URL is not set');
     }
     const chainId = this.getChainId();
-    return new ethers.JsonRpcProvider(rpcUrl, chainId);
+    const provider = new ethers.JsonRpcProvider(rpcUrl, chainId);
+    provider.on('error', (err) => {
+      this.logger.debug(`Provider background error: ${err?.message || err}`);
+    });
+    return provider;
   }
 
   private getSigner(provider: ethers.JsonRpcProvider): ethers.Wallet {

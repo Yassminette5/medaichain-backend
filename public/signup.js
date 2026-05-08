@@ -160,6 +160,10 @@ form.addEventListener('submit', async (e) => {
 
         alert("Inscription réussie ! Vous pouvez maintenant vous connecter sur l'application mobile ou le dashboard.");
         
+        // if (role === 'clinique') {
+        //     window.location.href = 'clinique_dashboard.html';
+        //     return;
+        // }
 
         document.body.innerHTML = `
             <div style="text-align:center; color: white;">

@@ -231,6 +231,9 @@ export class PrescriptionAnalysisService {
             response = await fetch(`${this.baseUrl}/process`, {
               method: 'POST',
               body: attemptForm,
+              headers: {
+                'ngrok-skip-browser-warning': 'true',
+              },
             });
             lastError = undefined;
             break;

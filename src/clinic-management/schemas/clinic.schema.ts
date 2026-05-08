@@ -17,7 +17,7 @@ export class Clinic {
     @Prop()
     phoneNumber: string;
 
-    @Prop({ unique: true })
+    @Prop({ unique: true, sparse: true })
     email: string;
 
     @Prop()

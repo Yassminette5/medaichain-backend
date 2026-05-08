@@ -3,6 +3,7 @@ import {
     Get,
     Post,
     Patch,
+    Put,
     Delete,
     Body,
     Param,
@@ -90,28 +91,6 @@ export class PrescriptionsController {
         return this.prescriptionsService.findByPatient(patientId);
     }
 
-    // ========== DÉTAIL D'UNE ORDONNANCE ==========
-    @Get(':id')
-    @ApiOperation({ summary: 'Obtenir les détails d\'une ordonnance' })
-    async getOne(@Param('id') id: string) {
-        return this.prescriptionsService.findOne(id);
-    }
-
-    // ========== CHANGER LE STATUT D'UNE ORDONNANCE (MÉDECIN) ==========
-    @UseGuards(RolesGuard)
-    @Roles(UserRole.MEDECIN)
-    @Patch(':id/status')
-    @ApiOperation({
-        summary: 'Mettre à jour le statut d\'une ordonnance (Médecin)',
-        description: 'Statuts possibles: active, completed, cancelled',
-    })
-    async updateStatus(
-        @Param('id') id: string,
-        @Body() body: { status: string },
-    ) {
-        return this.prescriptionsService.updateStatus(id, body.status);
-    }
-
     // ========== PARTAGE SIMPLE (SANS CHIFFREMENT) ==========
     @UseGuards(RolesGuard)
     @Roles(UserRole.PATIENT)
@@ -156,6 +135,35 @@ export class PrescriptionsController {
         return this.prescriptionsService.listSimpleSharedForPharmacy(String(pharmacyId));
     }
 
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.PHARMACIE)
+    @Put('shared-documents/:id/status')
+    @ApiOperation({ summary: 'Mettre à jour le statut d\'une ordonnance partagée' })
+    async updateSharedPrescriptionStatus(
+        @Param('id') id: string,
+        @Body() body: { status: string; validationNote?: string },
+        @Request() req: any,
+    ) {
+        const pharmacyId = req.user?.userId ?? req.user?.sub;
+        return this.prescriptionsService.updateSharedPrescriptionStatus(
+            id,
+            String(pharmacyId),
+            body.status,
+            body.validationNote,
+        );
+    }
+
+    // ========== ORDONNANCES PARTAGÉES (PHARMACIE) ==========
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.PHARMACIE)
+    @Get('shared')
+    @ApiOperation({ summary: 'Lister les ordonnances partagées avec la pharmacie' })
+    async getSharedPrescriptions(@Request() req: any) {
+        const pharmacyId = req.user?.userId ?? req.user?.sub;
+        if (!pharmacyId) return [];
+        return this.prescriptionsService.listSharedForPharmacy(String(pharmacyId));
+    }
+
     // ========== PARTAGER UNE ORDONNANCE AVEC UNE PHARMACIE (PATIENT) ==========
     @UseGuards(RolesGuard)
     @Roles(UserRole.PATIENT)
@@ -195,28 +203,6 @@ export class PrescriptionsController {
         );
     }
 
-    // ========== TRANSFERT ORDONNANCE -> PATIENT (MÉDECIN ON-CHAIN) ==========
-    @UseGuards(RolesGuard)
-    @Roles(UserRole.MEDECIN)
-    @Post(':id/transfer-to-patient')
-    @ApiOperation({ summary: 'Transférer une ordonnance on-chain du médecin vers le patient' })
-    async transferToPatient(@Param('id') id: string, @Request() req: any) {
-        const doctorId = req.user?.userId ?? req.user?.sub;
-        if (!doctorId) throw new BadRequestException('Médecin non identifié');
-        return this.prescriptionsService.transferToPatient(id, String(doctorId));
-    }
-
-    // ========== ORDONNANCES PARTAGÉES (PHARMACIE) ==========
-    @UseGuards(RolesGuard)
-    @Roles(UserRole.PHARMACIE)
-    @Get('shared')
-    @ApiOperation({ summary: 'Lister les ordonnances partagées avec la pharmacie' })
-    async getSharedPrescriptions(@Request() req: any) {
-        const pharmacyId = req.user?.userId ?? req.user?.sub;
-        if (!pharmacyId) return [];
-        return this.prescriptionsService.listSharedForPharmacy(String(pharmacyId));
-    }
-
     // ========== ORDONNANCE PARTAGÉE DÉTAILLÉE (PHARMACIE) ==========
     @UseGuards(RolesGuard)
     @Roles(UserRole.PHARMACIE)
@@ -226,6 +212,41 @@ export class PrescriptionsController {
         const pharmacyId = req.user?.userId ?? req.user?.sub;
         if (!pharmacyId) throw new BadRequestException('Pharmacie non identifiée');
         return this.prescriptionsService.getSharedByPharmacy(id, String(pharmacyId));
+    }
+
+    // ========== DÉTAIL D'UNE ORDONNANCE ==========
+    // IMPORTANT: This must come AFTER all named routes (shared-documents, shared, my-prescriptions, etc.)
+    // because :id is a catch-all parameter that would intercept them.
+    @Get(':id')
+    @ApiOperation({ summary: 'Obtenir les détails d\'une ordonnance' })
+    async getOne(@Param('id') id: string) {
+        return this.prescriptionsService.findOne(id);
+    }
+
+    // ========== CHANGER LE STATUT D'UNE ORDONNANCE (MÉDECIN) ==========
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.MEDECIN)
+    @Patch(':id/status')
+    @ApiOperation({
+        summary: 'Mettre à jour le statut d\'une ordonnance (Médecin)',
+        description: 'Statuts possibles: active, completed, cancelled',
+    })
+    async updateStatus(
+        @Param('id') id: string,
+        @Body() body: { status: string },
+    ) {
+        return this.prescriptionsService.updateStatus(id, body.status);
+    }
+
+    // ========== TRANSFERT ORDONNANCE -> PATIENT (MÉDECIN ON-CHAIN) ==========
+    @UseGuards(RolesGuard)
+    @Roles(UserRole.MEDECIN)
+    @Post(':id/transfer-to-patient')
+    @ApiOperation({ summary: 'Transférer une ordonnance on-chain du médecin vers le patient' })
+    async transferToPatient(@Param('id') id: string, @Request() req: any) {
+        const doctorId = req.user?.userId ?? req.user?.sub;
+        if (!doctorId) throw new BadRequestException('Médecin non identifié');
+        return this.prescriptionsService.transferToPatient(id, String(doctorId));
     }
 
     // ========== SUPPRIMER UNE ORDONNANCE (MÉDECIN) ==========

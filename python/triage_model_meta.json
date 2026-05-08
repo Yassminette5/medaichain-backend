@@ -1,0 +1,28 @@
+{
+    "model_type": "RandomForestClassifier",
+    "version": "1.0.0",
+    "features": [
+        "Age",
+        "Gender",
+        "HeartRate",
+        "SystolicBP",
+        "Temperature",
+        "OxygenSat",
+        "Comorbidities",
+        "PainLevel"
+    ],
+    "feature_importance": {
+        "PainLevel": 0.43734865239710774,
+        "SystolicBP": 0.27382339848722104,
+        "HeartRate": 0.12522150429493661,
+        "OxygenSat": 0.1080644994140647,
+        "Temperature": 0.02100811092475066,
+        "Age": 0.019714024048535343,
+        "Comorbidities": 0.013456762272095598,
+        "Gender": 0.0013630481612882887
+    },
+    "n_samples": 30000,
+    "metrics": {
+        "accuracy": 0.9336666666666666
+    }
+}

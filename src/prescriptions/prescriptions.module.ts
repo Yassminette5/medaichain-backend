@@ -10,6 +10,7 @@ import { UsersModule } from '../users/users.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { ProfilesModule } from '../profiles/profiles.module';
 import { DoctorAiModule } from '../doctor-ai/doctor-ai.module';
+import { TokenModule } from '../token/token.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { DoctorAiModule } from '../doctor-ai/doctor-ai.module';
     UsersModule,
     WalletModule,
     ProfilesModule,
+    TokenModule,
     forwardRef(() => DoctorAiModule),
   ],
   controllers: [PrescriptionsController],

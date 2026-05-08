@@ -23,6 +23,7 @@ export class TokenService {
   private contract: ethers.Contract;
   private signerWallet: ethers.Wallet;
   private tokenAddress: string;
+  private mintLock: Promise<void> = Promise.resolve();
 
   constructor(private configService: ConfigService) {
     const rpcUrl = this.configService.get<string>('POLYGON_RPC_URL');
@@ -68,35 +69,50 @@ export class TokenService {
     to: string;
     blockNumber: number;
   }> {
-    try {
-      if (!ethers.isAddress(toAddress)) {
-        throw new BadRequestException('Invalid recipient address');
-      }
+    // Serialize mint calls to avoid nonce collisions ("already known" errors)
+    const result = new Promise<{
+      txHash: string;
+      amount: string;
+      to: string;
+      blockNumber: number;
+    }>((resolve, reject) => {
+      this.mintLock = this.mintLock.then(async () => {
+        try {
+          if (!ethers.isAddress(toAddress)) {
+            throw new BadRequestException('Invalid recipient address');
+          }
 
-      const amountBigInt = BigInt(amount);
-      if (amountBigInt <= 0n) {
-        throw new BadRequestException('Amount must be greater than 0');
-      }
+          const amountBigInt = BigInt(amount);
+          if (amountBigInt <= 0n) {
+            throw new BadRequestException('Amount must be greater than 0');
+          }
 
-      this.logger.log(`Minting ${amount} tokens to ${toAddress}`);
+          this.logger.log(`Minting ${amount} tokens to ${toAddress}`);
 
-      // Call mint function
-      const tx = await this.contract.mint(toAddress, amountBigInt);
-      const receipt = await tx.wait();
+          // Call mint function
+          const tx = await this.contract.mint(toAddress, amountBigInt);
+          const receipt = await tx.wait();
 
-      this.logger.log(`✅ Minting successful. TX: ${receipt.hash}`);
+          this.logger.log(`✅ Minting successful. TX: ${receipt.hash}`);
 
-      return {
-        txHash: receipt.hash,
-        amount: amount,
-        to: toAddress,
-        blockNumber: receipt.blockNumber,
-      };
-    } catch (error) {
-      const message = this.getErrorMessage(error);
-      this.logger.error(`Minting failed: ${message}`);
-      throw new InternalServerErrorException(`Failed to mint tokens: ${message}`);
-    }
+          // Small delay after mint to let the nonce update propagate
+          await new Promise(r => setTimeout(r, 1500));
+
+          resolve({
+            txHash: receipt.hash,
+            amount: amount,
+            to: toAddress,
+            blockNumber: receipt.blockNumber,
+          });
+        } catch (error) {
+          const message = this.getErrorMessage(error);
+          this.logger.error(`Minting failed: ${message}`);
+          reject(new InternalServerErrorException(`Failed to mint tokens: ${message}`));
+        }
+      });
+    });
+
+    return result;
   }
 
   /**

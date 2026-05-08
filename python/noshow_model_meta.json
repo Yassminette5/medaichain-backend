@@ -1,0 +1,41 @@
+{
+  "model_type": "RandomForestClassifier",
+  "version": "1.0.0",
+  "features": [
+    "Gender",
+    "Age",
+    "Scholarship",
+    "Hipertension",
+    "Diabetes",
+    "Alcoholism",
+    "Handcap",
+    "SMS_received",
+    "DaysAhead",
+    "DayOfWeek",
+    "Hour",
+    "PastAppointments"
+  ],
+  "n_samples": 50000,
+  "noshow_rate": 0.2086,
+  "metrics": {
+    "accuracy": 0.638,
+    "precision": 0.2844,
+    "recall": 0.4851,
+    "f1": 0.3586,
+    "auc_roc": 0.6284
+  },
+  "feature_importance": {
+    "DaysAhead": 0.2782,
+    "Age": 0.2403,
+    "PastAppointments": 0.1228,
+    "Hour": 0.1185,
+    "DayOfWeek": 0.0866,
+    "SMS_received": 0.0368,
+    "Gender": 0.0284,
+    "Hipertension": 0.0268,
+    "Scholarship": 0.0216,
+    "Alcoholism": 0.0166,
+    "Diabetes": 0.016,
+    "Handcap": 0.0074
+  }
+}

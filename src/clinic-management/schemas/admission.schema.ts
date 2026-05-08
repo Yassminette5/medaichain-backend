@@ -41,6 +41,19 @@ export class Admission {
 
     @Prop()
     notes: string;
+
+    // --- AI Triage Fields ---
+    @Prop()
+    triageStatus: string; // 'ROUTINE', 'URGENT', 'CRITIQUE'
+    
+    @Prop()
+    triageColor: string; // 'green', 'orange', 'red'
+    
+    @Prop()
+    triageRecommendation: string;
+    
+    @Prop()
+    triageConfidence: number;
 }
 
 export const AdmissionSchema = SchemaFactory.createForClass(Admission);

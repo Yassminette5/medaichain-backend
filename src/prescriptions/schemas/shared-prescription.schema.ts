@@ -1,6 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
+export enum SharedPrescriptionStatus {
+    EN_ATTENTE = 'enAttente',
+    VALIDE = 'valide',
+    REJETE = 'rejete',
+}
+
 export type SharedPrescriptionDocument = SharedPrescription & Document;
 
 @Schema({ timestamps: true })
@@ -13,6 +19,12 @@ export class SharedPrescription {
 
     @Prop({ type: Types.ObjectId, ref: 'User', required: true })
     patientId: Types.ObjectId;
+
+    @Prop({ type: String, enum: SharedPrescriptionStatus, default: SharedPrescriptionStatus.EN_ATTENTE })
+    status: SharedPrescriptionStatus;
+
+    @Prop()
+    validationNote?: string;
 
     @Prop({ default: () => new Date() })
     sharedAt: Date;

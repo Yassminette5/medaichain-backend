@@ -61,6 +61,38 @@ export class Appointment {
 
     @Prop({ type: [String], required: false })
     aiRecommendations: string[]; // Recommandations cliniques générées par l'IA
+
+    // --- AI Disease Early Detection Fields ---
+    @Prop({ required: false })
+    aiDiseaseRisk: string; // 'SAIN', 'RISQUE_DIABETE', 'RISQUE_CARDIOVASCULAIRE'
+
+    @Prop({ required: false })
+    aiDiseaseLabel: string;
+
+    @Prop({ required: false })
+    aiDiseaseColor: string; // 'green', 'orange', 'red'
+
+    @Prop({ required: false })
+    aiDiseaseConfidence: number;
+
+    // --- NLP Symptom Checker Fields ---
+    @Prop({ required: false })
+    aiNlpDiagnosis: string;
+
+    @Prop({ required: false })
+    aiNlpConfidence: number;
+
+    @Prop({ required: false })
+    aiNlpColor: string; // 'red', 'orange', 'green'
+
+    @Prop({ required: false })
+    aiNlpTriage: string;
+
+    @Prop({ required: false })
+    aiNlpPreparation: string;
+
+    @Prop({ required: false })
+    aiNlpActionButton: string;
 }
 
 export const AppointmentSchema = SchemaFactory.createForClass(Appointment);

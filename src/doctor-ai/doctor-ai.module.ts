@@ -7,7 +7,7 @@ import { PatientModule } from '../patient/patient.module';
 import { SubscriptionModule } from '../subscription/subscription.module';
 
 @Module({
-  imports: [ConfigModule, forwardRef(() => PrescriptionsModule), PatientModule, SubscriptionModule],
+  imports: [ConfigModule, forwardRef(() => PrescriptionsModule), forwardRef(() => PatientModule), SubscriptionModule],
   controllers: [DoctorAiController],
   providers: [DoctorAiService],
   exports: [DoctorAiService],

@@ -85,24 +85,72 @@ export class ClinicManagementService {
 
         // 1. Chercher la clinique existante
         let clinic = await this.clinicModel.findOne({ ownerId: ownerObjectId }).exec();
-        if (clinic) return clinic;
+        if (clinic) {
+            // Backfill: si des champs sont vides, les remplir depuis le profil / user
+            const needsBackfill = !clinic.email || !clinic.phoneNumber || !clinic.city;
+            if (needsBackfill) {
+                try {
+                    const user = await this.userModel.findById(ownerObjectId).exec();
+                    const profile = await this.profilesService.getProfile(ownerId, UserRole.CLINIQUE).catch(() => null) as any;
+                    const updates: any = {};
+                    if (!clinic.email) {
+                        updates.email = profile?.officialEmail || user?.email || undefined;
+                    }
+                    if (!clinic.phoneNumber) {
+                        updates.phoneNumber = profile?.phone || user?.phone || undefined;
+                    }
+                    if (!clinic.city && profile?.city) updates.city = profile.city;
+                    if (!clinic.wilaya && profile?.wilaya) updates.wilaya = profile.wilaya;
+                    if (Object.keys(updates).length > 0) {
+                        clinic = await this.clinicModel.findByIdAndUpdate(clinic._id, updates, { new: true }).exec();
+                    }
+                } catch (_) { }
+            }
+            return clinic;
+        }
 
-        // 2. Sinon, lire le ClinicProfile pour pré-remplir les données
+        // 2. Lire le ClinicProfile + User pour pré-remplir un maximum de données
         let name = 'Ma Clinique';
         let address = 'À compléter';
+        let email = '';
+        let phoneNumber = '';
+        let city = '';
+        let wilaya = '';
+        let description = '';
+
+        // Récupérer les données de l'utilisateur (email, phone)
+        try {
+            const user = await this.userModel.findById(ownerObjectId).exec();
+            if (user) {
+                email = user.email || '';
+                phoneNumber = user.phone || '';
+            }
+        } catch (_) { }
+
+        // Récupérer les données du profil clinique (inscription)
         try {
             const profile = await this.profilesService.getProfile(ownerId, UserRole.CLINIQUE) as any;
             if (profile) {
                 if (profile.clinicName) name = profile.clinicName;
                 if (profile.address) address = profile.address;
+                if (profile.city) city = profile.city;
+                if (profile.wilaya) wilaya = profile.wilaya;
+                // officialEmail du profil a priorité sur l'email du user
+                if (profile.officialEmail) email = profile.officialEmail;
+                if (profile.phone) phoneNumber = profile.phone;
             }
         } catch (_) { /* profil pas encore créé, on utilise les valeurs par défaut */ }
 
-        // 3. Créer la clinique automatiquement
+        // 3. Créer la clinique automatiquement avec toutes les données disponibles
         clinic = new this.clinicModel({
             ownerId: ownerObjectId,
             name,
             address,
+            email: email || undefined,
+            phoneNumber: phoneNumber || undefined,
+            city: city || undefined,
+            wilaya: wilaya || undefined,
+            description: description || undefined,
         });
         return clinic.save();
     }
@@ -183,6 +231,18 @@ export class ClinicManagementService {
         let noShowProb = null;
         let riskLevel = null;
         let aiRecommendations = [];
+        let aiDiseaseRisk = 'SAIN';
+        let aiDiseaseLabel = '✅ Aucun risque majeur détecté';
+        let aiDiseaseColor = 'green';
+        let aiDiseaseConfidence = 0;
+
+        let aiNlpDiagnosis = null;
+        let aiNlpConfidence = 0;
+        let aiNlpColor = 'green';
+        let aiNlpTriage = null;
+        let aiNlpPreparation = null;
+        let aiNlpActionButton = null;
+
         try {
             // ═══ Récupérer le vrai dossier médical mobile ═══
             let patientInfo: any;
@@ -248,7 +308,74 @@ export class ClinicManagementService {
                 console.log(`[IA] RDV Patient: ${dto.patientName} | Risk: ${noShowProb}% (${riskLevel})`);
             }
         } catch (error) {
-            console.log('[IA] Service non disponible:', error.message);
+            console.log('[IA] Service No-Show non disponible:', error.message);
+        }
+
+        try {
+            let patientInfo: any;
+            if (dto.patientId) patientInfo = await this.profilesService.getProfile(dto.patientId, UserRole.PATIENT);
+            
+            const config = await this.getClinicConfig(clinicId);
+            const aiUrl = config?.adherenceModelUrl || 'http://localhost:5005';
+            
+            const payload = {
+                Age: patientInfo?.age || 40,
+                Gender: patientInfo?.gender === 'female' ? 'F' : 'M',
+                BMI: patientInfo?.weight && patientInfo?.height ? (patientInfo.weight / Math.pow(patientInfo.height/100, 2)) : 25.0,
+                SystolicBP: 120, // Par défaut si non fourni
+                Glucose: 90,
+                Cholesterol: 190,
+                Smoking: patientInfo?.habits?.includes('smoking') ? 1 : 0
+            };
+            
+            const responseDisease = await fetch(`${aiUrl}/predict/disease`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            if (responseDisease.ok) {
+                const dataDisease = await responseDisease.json();
+                if (dataDisease.success) {
+                    aiDiseaseRisk = dataDisease.status;
+                    aiDiseaseLabel = dataDisease.label;
+                    aiDiseaseColor = dataDisease.color;
+                    aiDiseaseConfidence = dataDisease.confidence;
+                    if (dataDisease.explanations && Array.isArray(dataDisease.explanations)) {
+                        aiRecommendations = [...aiRecommendations, ...dataDisease.explanations];
+                    }
+                }
+            }
+        } catch (e) {
+            console.log('[IA] Service Disease non disponible:', e.message);
+        }
+
+        // --- 3. NLP Symptom Checker ---
+        if (dto.reason && dto.reason.trim().length > 5) {
+            try {
+                const config = await this.getClinicConfig(clinicId);
+                const aiUrl = config?.adherenceModelUrl || 'http://localhost:5005';
+                const responseNlp = await fetch(`${aiUrl}/predict/nlp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symptoms: dto.reason })
+                });
+                
+                if (responseNlp.ok) {
+                    const dataNlp = await responseNlp.json();
+                    if (dataNlp.success) {
+                        aiNlpDiagnosis = dataNlp.diagnosis;
+                        aiNlpColor = dataNlp.color;
+                        aiNlpConfidence = dataNlp.confidence;
+                        aiNlpTriage = dataNlp.triage;
+                        aiNlpPreparation = dataNlp.preparation;
+                        aiNlpActionButton = dataNlp.action_button;
+                        console.log(`[IA] NLP Pré-Diag: ${aiNlpDiagnosis} (${aiNlpConfidence}%)`);
+                    }
+                }
+            } catch (e) {
+                console.log('[IA] Service NLP non disponible:', e.message);
+            }
         }
 
         const appointment = new this.appointmentModel({
@@ -259,6 +386,16 @@ export class ClinicManagementService {
             noShowProbability: noShowProb,
             riskLevel: riskLevel,
             aiRecommendations: aiRecommendations,
+            aiDiseaseRisk,
+            aiDiseaseLabel,
+            aiDiseaseColor,
+            aiDiseaseConfidence,
+            aiNlpDiagnosis,
+            aiNlpColor,
+            aiNlpConfidence,
+            aiNlpTriage,
+            aiNlpPreparation,
+            aiNlpActionButton
         });
         if (dto.doctorId && dto.doctorId.trim().length > 0) {
             appointment.doctorId = new Types.ObjectId(dto.doctorId);
@@ -353,6 +490,63 @@ export class ClinicManagementService {
             date: { $gte: today, $lte: todayEnd },
         });
 
+        // --- Triage IA ---
+        let triageStatus = 'ROUTINE';
+        let triageColor = 'green';
+        let triageRecommendation = '🟢 ROUTINE — Suivre l\'ordre normal d\'arrivée';
+        let triageConfidence = 0;
+        
+        try {
+            const patientInfo = await this.profilesService.getProfile(dto.patientId, UserRole.PATIENT);
+            const clinicConfig = await this.clinicConfigModel.findOne({ clinicId: new Types.ObjectId(clinicId) }).exec();
+            const baseUrl = clinicConfig?.adherenceModelUrl || 'http://localhost:5005';
+            
+            // Simulation des constantes vitales en fonction du motif et de l'âge
+            const age = patientInfo?.age || 35;
+            const gender = patientInfo?.gender === 'female' ? 'F' : 'M';
+            const reason = dto.reason?.toLowerCase() || '';
+            const diseases = patientInfo?.chronicDiseases || [];
+            
+            let hr = 80, sbp = 120, temp = 37.0, osat = 98, pain = 2;
+            
+            if (reason.includes('urgence') || reason.includes('douleur')) {
+                hr = 105; sbp = 145; pain = 7;
+            } else if (reason.includes('fievre') || reason.includes('fièvre')) {
+                temp = 39.0; hr = 95; pain = 4;
+            } else if (reason.includes('malaise') || reason.includes('respiratoire')) {
+                osat = 92; hr = 110; sbp = 95; pain = 5;
+            }
+            
+            const payload = {
+                Age: age,
+                Gender: gender,
+                HeartRate: hr,
+                SystolicBP: sbp,
+                Temperature: temp,
+                OxygenSat: osat,
+                Comorbidities: diseases.length,
+                PainLevel: pain
+            };
+            
+            const response = await fetch(`${baseUrl}/predict/triage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    triageStatus = data.triage_status;
+                    triageColor = data.color;
+                    triageRecommendation = data.recommendation;
+                    triageConfidence = data.confidence;
+                }
+            }
+        } catch (e) {
+            console.log(`[Triage IA] Erreur appel modèle : ${e.message}`);
+        }
+
         const admission = new this.admissionModel({
             ...dto,
             clinicId: new Types.ObjectId(clinicId),
@@ -360,6 +554,10 @@ export class ClinicManagementService {
             doctorId: dto.doctorId ? new Types.ObjectId(dto.doctorId) : undefined,
             date: new Date(),
             queueNumber: count + 1,
+            triageStatus,
+            triageColor,
+            triageRecommendation,
+            triageConfidence
         });
         return admission.save();
     }
@@ -1089,13 +1287,6 @@ export class ClinicManagementService {
                     patientInfo = await this.profilesService.getProfile(pidStr, UserRole.PATIENT);
                 } catch (e) {}
 
-                // Nombre de dossiers = complexité du suivi
-                let totalDosage = 50;
-                try {
-                    const recordCount = await this.medicalRecordModel.countDocuments({ patientId: pid }).exec();
-                    if (recordCount > 0) totalDosage = recordCount * 100;
-                } catch (_) {}
-
                 // Index déterministe pour une génération de données stable d'un clic à l'autre
                 let pIdx = 0;
                 for (let i = 0; i < pidStr.length; i++) {
@@ -1103,109 +1294,118 @@ export class ClinicManagementService {
                 }
                 pIdx = pIdx % 10;
 
-                // Utiliser les VRAIES données du dossier médical mobile
+                // ═══ Construire le payload NO-SHOW (même modèle que les RDV) ═══
                 const hasRealProfile = !!patientInfo?.age;
-                const baseAge = patientInfo?.age || (25 + ((pIdx % 5) * 8)); // 25, 33, 41, 49, 57
-                const gender = patientInfo?.gender === 'female' ? 'Female' : (patientInfo?.gender === 'male' ? 'Male' : (pIdx % 2 === 0 ? 'Male' : 'Female'));
-                const comorb = patientInfo?.chronicDiseases?.length || (pIdx % 4);
+                const baseAge = patientInfo?.age || (25 + ((pIdx % 5) * 8));
+                const realGender = patientInfo?.gender === 'female' ? 'F' : (patientInfo?.gender === 'male' ? 'M' : (pIdx % 2 === 0 ? 'M' : 'F'));
+                const diseases = patientInfo?.chronicDiseases || [];
+                const hasHipertension = diseases.some((d: string) => d.toLowerCase().includes('tension') || d.toLowerCase().includes('hypertension')) ? 1 : 0;
+                const hasDiabetes = diseases.some((d: string) => d.toLowerCase().includes('diab')) ? 1 : 0;
+                const hasAlcoholism = diseases.some((d: string) => d.toLowerCase().includes('alcool')) ? 1 : 0;
+                const comorb = diseases.length || 0;
                 const allergies = patientInfo?.allergies?.length || 0;
-                const baseIncome = 2500 + ((pIdx % 3) * 1200); // 2500, 3700, 4900
-                const baseDosage = totalDosage + ((pIdx % 4) * 80);
-
-                // Un patient no-show augmente artificiellement le risque
-                const noShowPenalty = patientData.noShowRisk ? 2 : 0;
+                const smsReceived = patientData.isOnline ? 1 : 0; // RDV en ligne = rappel automatique
 
                 const payload = {
-                    Age: baseAge,
-                    Gender: gender,
-                    Dosage_mg: baseDosage + (noShowPenalty * 100),
-                    Income: Math.max(1000, baseIncome - (noShowPenalty * 1000)),
-                    Comorbidities_Count: comorb + allergies + noShowPenalty
+                    gender: realGender,
+                    age: baseAge,
+                    scholarship: 0,
+                    hipertension: hasHipertension,
+                    diabetes: hasDiabetes,
+                    alcoholism: hasAlcoholism,
+                    handcap: 0,
+                    sms_received: smsReceived,
                 };
 
                 console.log(`[IA CLINIQUE] 📊 ${patientName} | ${patientSource} | Admis: ${patientData.isAdmitted ? '✅' : '❌'} | No-show: ${patientData.noShowRisk ? '⚠️' : '—'} | ${hasRealProfile ? 'Profil réel' : 'Estimé'}`);
 
-                // ═══ Appel au modèle IA avec FALLBACK déterministe ═══
+                // ═══ Appel au modèle NO-SHOW (même endpoint que les RDV) ═══
                 let data: any = null;
                 try {
-                    const response = await fetch(`${config.adherenceModelUrl}/predict/adherence`, {
+                    const response = await fetch(`${config.adherenceModelUrl}/predict`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
                     if (response.ok) {
-                        data = await response.json();
-                        console.log(`[IA] ✅ Modèle IA répondu pour ${patientName}`);
+                        const raw = await response.json();
+                        if (raw.success) {
+                            // Convertir la réponse /predict en format compatible dashboard
+                            const noShowProb = raw.noShowProbability || 0;
+                            let riskStatus = 'ADHERENT_STABLE';
+                            if (noShowProb >= 60) riskStatus = 'RISQUE_ELEVÉ_ABANDON';
+                            else if (noShowProb >= 35) riskStatus = 'RISQUE_MODÉRÉ';
+
+                            data = {
+                                risk_status: riskStatus,
+                                adherence_probability: noShowProb, // Score de no-show direct
+                                risk_factors: raw.riskFactors || [],
+                                recommendation: raw.recommendations?.[0] || '',
+                                confidence: raw.confidence || Math.round(Math.max(noShowProb, 100 - noShowProb)),
+                            };
+                            console.log(`[IA] ✅ Modèle No-Show répondu pour ${patientName}: ${noShowProb}%`);
+                        }
                     }
                 } catch (fetchErr) {
-                    console.log(`[IA] ⚠️ Modèle IA indisponible pour ${patientName}, utilisation du fallback déterministe`);
+                    console.log(`[IA] ⚠️ Modèle IA indisponible pour ${patientName}, utilisation du fallback`);
                 }
 
-                // ═══ FALLBACK : Si le modèle IA est indisponible, générer un score déterministe ═══
+                // ═══ FALLBACK si modèle indisponible ═══
                 if (!data) {
                     const riskScore = Math.max(5, Math.min(95, 
-                        30 + (noShowPenalty * 25) + (comorb * 8) + (baseAge > 55 ? 15 : 0) + (baseAge < 25 ? 10 : 0) - (patientData.isAdmitted ? 20 : 0) + ((pIdx % 3) * 7)
+                        20 + (patientData.noShowRisk ? 30 : 0) + (comorb * 5) + (baseAge > 55 ? 10 : 0) + (baseAge < 25 ? 12 : 0) - (patientData.isAdmitted ? 15 : 0) - (smsReceived * 8) + (hasAlcoholism * 15)
                     ));
-                    const isHighRisk = riskScore > 60 || patientData.noShowRisk;
+                    const isHighRisk = riskScore > 60;
                     data = {
-                        risk_status: isHighRisk ? 'RISQUE_ELEVÉ_ABANDON' : (riskScore > 40 ? 'RISQUE_MODÉRÉ' : 'ADHERENT_STABLE'),
+                        risk_status: isHighRisk ? 'RISQUE_ELEVÉ_ABANDON' : (riskScore > 35 ? 'RISQUE_MODÉRÉ' : 'ADHERENT_STABLE'),
                         adherence_probability: riskScore,
                         risk_factors: [],
                         recommendation: '',
-                        confidence: Math.round(65 + (pIdx % 20)),
+                        confidence: Math.round(Math.max(riskScore, 100 - riskScore)),
                     };
-                    console.log(`[IA] 🔄 Fallback déterministe pour ${patientName}: ${riskScore}% (${data.risk_status})`);
+                    console.log(`[IA] 🔄 Fallback pour ${patientName}: ${riskScore}% (${data.risk_status})`);
                 }
 
                 {
                     const isRisky = data.risk_status === "RISQUE_ELEVÉ_ABANDON";
+                    const isMod = data.risk_status === "RISQUE_MODÉRÉ";
                     
-                    // Génération intelligente des facteurs de risque
+                    // Facteurs de risque — utiliser ceux du modèle si disponibles
                     let factors: string[] = data.risk_factors || [];
                     if (factors.length === 0) {
-                        // Facteurs médicaux
-                        if (baseAge > 55) factors.push(`Âge avancé (${baseAge} ans)`);
-                        if (baseAge < 25) factors.push(`Patient jeune (${baseAge} ans) — risque d'oubli`);
-                        if (comorb >= 2) factors.push(`${comorb} comorbidités détectées`);
-                        if (baseDosage > 200) factors.push(`Traitement complexe (${baseDosage}mg)`);
-                        if (baseIncome < 2500) factors.push(`Revenu modeste — accès limité`);
-                        if (factors.length === 0 && isRisky) factors.push(`Profil statistiquement à risque`);
-                        if (factors.length === 0) factors.push(`Aucun facteur de risque majeur`);
+                        if (baseAge >= 18 && baseAge <= 25) factors.push(`Jeune adulte (${baseAge} ans) — tranche à risque élevé de no-show`);
+                        if (baseAge > 65) factors.push(`Patient âgé (${baseAge} ans) — mobilité réduite`);
+                        if (comorb >= 2) factors.push(`${comorb} comorbidités détectées — suivi renforcé`);
+                        if (hasHipertension) factors.push(`Hypertension artérielle — suivi tensionnel nécessaire`);
+                        if (hasDiabetes) factors.push(`Diabète — contrôle glycémique essentiel`);
+                        if (hasAlcoholism) factors.push(`Alcoolisme — facteur de non-adhérence significatif`);
+                        if (!smsReceived) factors.push(`Aucun SMS de rappel programmé`);
+                        if (factors.length === 0 && isRisky) factors.push(`Profil statistiquement à risque de no-show`);
+                        if (factors.length === 0) factors.push(`Aucun facteur de risque majeur identifié`);
                     }
 
-                    // Facteurs cliniques croisés (RDV ↔ admissions)
-                    if (patientData.noShowRisk) {
-                        factors.push(`⚠️ Historique no-show détecté`);
-                    }
-                    if (patientData.isAdmitted && patientData.hasAppointment) {
-                        factors.push(`✅ Présent — RDV honoré`);
-                    }
-                    if (!patientData.hasAppointment && patientData.isAdmitted) {
-                        factors.push(`🚶 Walk-in sans RDV préalable`);
-                    }
-                    if (patientData.isOnline) {
-                        factors.push(`📱 Réservation via l'application`);
-                    }
-                    // Données médicales du profil mobile
+                    // Facteurs cliniques croisés
+                    if (patientData.noShowRisk) factors.push(`⚠️ Historique no-show détecté`);
+                    if (patientData.isAdmitted && patientData.hasAppointment) factors.push(`✅ Présent — RDV honoré`);
+                    if (!patientData.hasAppointment && patientData.isAdmitted) factors.push(`🚶 Walk-in sans RDV préalable`);
+                    if (patientData.isOnline) factors.push(`📱 Réservation via l'application`);
                     if (allergies > 0) factors.push(`${allergies} allergie(s) connue(s)`);
                     if (patientInfo?.chronicDiseases?.length > 0) {
                         factors.push(`Pathologies: ${patientInfo.chronicDiseases.slice(0, 2).join(', ')}`);
                     }
                     factors.push(`Source: ${patientSource}`);
 
-                    // Recommandation intelligente basée sur le contexte clinique
+                    // Recommandation clinique
                     let recommendation = data.recommendation || '';
                     if (!recommendation) {
-                        if (patientData.noShowRisk) recommendation = '⚠️ Patient absent à son dernier RDV — rappel téléphonique urgent';
-                        else if (isRisky && comorb >= 2) recommendation = 'Suivi personnalisé avec rappels quotidiens';
-                        else if (isRisky && patientData.isOnline) recommendation = 'Confirmer la présence par SMS avant le RDV';
-                        else if (isRisky) recommendation = 'Appel de rappel urgent avant le prochain RDV';
-                        else if (!patientData.hasAppointment) recommendation = 'Walk-in — proposer un suivi régulier avec RDV';
-                        else if (data.adherence_probability < 65) recommendation = 'SMS de suivi préventif recommandé';
-                        else recommendation = 'Patient stable — continuer le suivi standard';
+                        if (patientData.noShowRisk) recommendation = '🔴 ALERTE — Patient absent à son dernier RDV. Appel téléphonique immédiat requis';
+                        else if (isRisky && comorb >= 2) recommendation = '🔴 Patient poly-pathologique à risque élevé — Suivi rapproché avec rappels SMS';
+                        else if (isRisky) recommendation = '🔴 Risque élevé de no-show — Contacter le patient par téléphone pour confirmer';
+                        else if (isMod) recommendation = '🟡 VIGILANCE — Envoyer un SMS de rappel 24h avant le rendez-vous';
+                        else if (!patientData.hasAppointment) recommendation = '📋 Walk-in sans RDV — Proposer un suivi régulier planifié';
+                        else recommendation = '🟢 Patient stable — Maintenir le suivi standard';
                     }
 
-                    // Confiance du modèle
                     const conf = data.confidence || Math.round(Math.max(data.adherence_probability, 100 - data.adherence_probability));
 
                     if (!record) {
@@ -1247,52 +1447,52 @@ export class ClinicManagementService {
     // ==========================================
 
     async getAiAnalysisResults(clinicId: string): Promise<any[]> {
-        const records = await this.medicalRecordModel.find({
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const appointments = await this.appointmentModel.find({
             clinicId: new Types.ObjectId(clinicId),
-            adherenceRiskStatus: { $exists: true, $ne: null }
+            date: { $gte: today },
+            status: AppointmentStatus.CONFIRMED
         })
-        .sort({ lastAiAnalysisDate: -1, updatedAt: -1 })
+        .sort({ date: 1, timeSlot: 1 })
         .limit(50)
         .exec();
 
         const results = [];
-
-        for (const record of records) {
-            // Déterminer le niveau de risque
-            let riskLevel = 'faible';
-            let riskColor = 'green';
-
-            if (record.adherenceRiskStatus === 'RISQUE_ELEVÉ_ABANDON') {
-                riskLevel = 'élevé';
-                riskColor = 'red';
-            } else if (record.adherenceRiskScore && record.adherenceRiskScore < 60) {
-                riskLevel = 'modéré';
-                riskColor = 'orange';
-            }
-
-            // Chercher le nom du patient
-            let patientName = record.patientName || 'Patient';
+        for (const app of appointments) {
+            let patientName = app.patientName || 'Patient';
             if (patientName === 'Patient') {
                 try {
-                    const user = await this.userModel.findById(record.patientId).select('fullName email').exec();
+                    const user = await this.userModel.findById(app.patientId).select('fullName email').exec();
                     if (user?.fullName) patientName = user.fullName;
                     else if (user?.email) patientName = user.email;
                 } catch (_) {}
             }
 
             results.push({
-                recordId: record._id,
-                patientId: record.patientId,
+                appointmentId: app._id,
+                patientId: app.patientId,
                 patientName,
-                riskScore: record.adherenceRiskScore || 0,
-                riskStatus: record.adherenceRiskStatus,
-                riskLevel,
-                riskColor,
-                riskFactors: record.riskFactors || [],
-                recommendation: record.aiRecommendation || 'Suivi standard',
-                confidence: record.aiConfidence || 0,
-                requiresFollowUp: record.requiresFollowUpCall || false,
-                analyzedAt: record.lastAiAnalysisDate || (record as any).updatedAt,
+                date: app.date,
+                timeSlot: app.timeSlot,
+                diseaseRisk: app.aiDiseaseRisk || 'SAIN',
+                diseaseLabel: app.aiDiseaseLabel || '✅ Aucun risque majeur détecté',
+                diseaseColor: app.aiDiseaseColor || 'green',
+                diseaseConfidence: app.aiDiseaseConfidence || 0,
+                explanations: app.aiRecommendations || [],
+                // Fallback for frontend compatibility just in case
+                riskScore: app.aiDiseaseConfidence || 0,
+                riskLevel: app.aiDiseaseColor === 'red' ? 'élevé' : (app.aiDiseaseColor === 'orange' ? 'modéré' : 'faible'),
+                
+                // NLP Fields
+                nlpDiagnosis: app.aiNlpDiagnosis || null,
+                nlpColor: app.aiNlpColor || 'green',
+                nlpConfidence: app.aiNlpConfidence || 0,
+                nlpTriage: app.aiNlpTriage || null,
+                nlpPreparation: app.aiNlpPreparation || null,
+                nlpActionButton: app.aiNlpActionButton || null,
+                symptomsText: app.reason || null
             });
         }
 

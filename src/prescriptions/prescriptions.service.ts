@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { ethers } from 'ethers';
 import { Prescription, PrescriptionDocument } from './schemas/prescription.schema';
-import { SharedPrescription, SharedPrescriptionDocument } from './schemas/shared-prescription.schema';
+import { SharedPrescription, SharedPrescriptionDocument, SharedPrescriptionStatus } from './schemas/shared-prescription.schema';
 import { NotificationService } from '../notifications/notification.service';
 import { NotificationType } from '../notifications/notification.schema';
 import { NftService } from '../nft/nft.service';
@@ -12,9 +13,12 @@ import { UserRole } from '../users/schemas/user.schema';
 import { NftAssetType } from '../nft/schemas/nft-asset.schema';
 import { DoctorAiService } from '../doctor-ai/doctor-ai.service';
 import { ProfilesService } from '../profiles/profiles.service';
+import { TokenService } from '../token/token.service';
 
 @Injectable()
 export class PrescriptionsService {
+    private readonly logger = new Logger(PrescriptionsService.name);
+
     constructor(
         @InjectModel(Prescription.name)
         private prescriptionModel: Model<PrescriptionDocument>,
@@ -26,6 +30,7 @@ export class PrescriptionsService {
         private walletService: WalletService,
         private doctorAiService: DoctorAiService,
         private profilesService: ProfilesService,
+        private tokenService: TokenService,
     ) { }
 
     // ========== CRÉER UNE ORDONNANCE (MÉDECIN) ==========
@@ -512,20 +517,60 @@ export class PrescriptionsService {
         };
     }
 
-    async listSimpleSharedForPharmacy(pharmacyId: string): Promise<PrescriptionDocument[]> {
-        const shares = await this.sharedPrescriptionModel.find({
-            pharmacyId: new Types.ObjectId(pharmacyId),
-        }).exec();
-
-        if (!shares.length) return [];
-
-        const prescriptionIds = shares.map((s) => s.prescriptionId);
-
-        return this.prescriptionModel
-            .find({ _id: { $in: prescriptionIds } })
-            .populate('doctorId', 'fullName email phone')
+    async listSimpleSharedForPharmacy(pharmacyId: string): Promise<any[]> {
+        return this.sharedPrescriptionModel
+            .find({ pharmacyId: new Types.ObjectId(pharmacyId) })
+            .populate({
+                path: 'prescriptionId',
+                populate: { path: 'doctorId', select: 'fullName email phone' }
+            })
             .populate('patientId', 'email phone fullName')
-            .sort({ createdAt: -1 })
+            .sort({ sharedAt: -1 })
             .exec();
+    }
+
+    async updateSharedPrescriptionStatus(
+        shareId: string,
+        pharmacyId: string,
+        status: string,
+        validationNote?: string,
+    ) {
+        const share = await this.sharedPrescriptionModel.findOneAndUpdate(
+            { _id: new Types.ObjectId(shareId), pharmacyId: new Types.ObjectId(pharmacyId) },
+            { $set: { status, validationNote } },
+            { new: true }
+        ).exec();
+
+        if (!share) {
+            throw new BadRequestException('Partage non trouvé');
+        }
+
+        // Mint 1 FRYMN token reward when pharmacy validates a shared prescription
+        if (status === SharedPrescriptionStatus.VALIDE) {
+            try {
+                const pharmacyUser = await this.usersService.findById(pharmacyId);
+                if (pharmacyUser?.walletAddress) {
+                    const rewardAmount = ethers.parseUnits('1', 18).toString();
+                    const reward = await this.tokenService.mintTokens(
+                        pharmacyUser.walletAddress,
+                        rewardAmount,
+                    );
+                    this.logger.log(
+                        `[SharedPrescription] Minted 1 FRYMN reward for pharmacy ${pharmacyId}: ${reward.txHash}`,
+                    );
+                } else {
+                    this.logger.warn(
+                        `[SharedPrescription] No wallet for pharmacy ${pharmacyId}, skipping FRYMN reward`,
+                    );
+                }
+            } catch (error) {
+                this.logger.error(
+                    `[SharedPrescription] Failed to mint FRYMN reward for pharmacy ${pharmacyId}`,
+                    error instanceof Error ? error.stack : undefined,
+                );
+            }
+        }
+
+        return share;
     }
 }

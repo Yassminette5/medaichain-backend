@@ -11,10 +11,16 @@ export class AppointmentsService {
     ) { }
 
     // ========== CRÉER UN ÉVÉNEMENT ==========
-    async create(doctorId: string, dto: CreateAppointmentDto): Promise<CalendarEventDocument> {
+    async create(creatorId: string, dto: CreateAppointmentDto): Promise<CalendarEventDocument> {
+        // Si c'est un patient qui crée, on utilise le doctorId du DTO
+        // Sinon (médecin), creatorId est le médecin.
+        const doctorId = dto.doctorId || creatorId;
+        const patientId = dto.patientId || (dto.doctorId ? creatorId : undefined);
+
         const appointment = new this.appointmentModel({
             ...dto,
             userId: new Types.ObjectId(doctorId),
+            patientId: patientId ? new Types.ObjectId(patientId) : undefined,
             dateTime: new Date(dto.dateTime),
             endTime: dto.endTime ? new Date(dto.endTime) : undefined,
         });
@@ -32,6 +38,15 @@ export class AppointmentsService {
     // Alias pour compatibilité descendante
     async findAllForUser(userId: string): Promise<CalendarEventDocument[]> {
         return this.findAllByDoctor(userId);
+    }
+
+    // ========== OBTENIR TOUS LES ÉVÉNEMENTS D'UN PATIENT ==========
+    async findAllByPatient(patientId: string): Promise<CalendarEventDocument[]> {
+        return this.appointmentModel
+            .find({ patientId: new Types.ObjectId(patientId) })
+            .populate('userId', 'fullName email phone speciality hospital')
+            .sort({ dateTime: 1 })
+            .exec();
     }
 
     // ========== OBTENIR LES ÉVÉNEMENTS PAR MOIS ==========

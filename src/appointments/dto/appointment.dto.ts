@@ -56,6 +56,21 @@ export class CreateAppointmentDto {
     @IsOptional()
     @IsString()
     patientName?: string;
+
+    @ApiPropertyOptional({ description: 'ID du médecin' })
+    @IsOptional()
+    @IsString()
+    doctorId?: string;
+
+    @ApiPropertyOptional({ description: 'ID du patient' })
+    @IsOptional()
+    @IsString()
+    patientId?: string;
+
+    @ApiPropertyOptional({ description: 'Statut du rendez-vous (PENDING, ACCEPTED, DECLINED)' })
+    @IsOptional()
+    @IsString()
+    status?: string;
 }
 
 export class UpdateAppointmentDto {
@@ -66,4 +81,5 @@ export class UpdateAppointmentDto {
     @ApiPropertyOptional({ enum: EventType }) @IsOptional() @IsEnum(EventType) type?: EventType;
     @ApiPropertyOptional({ enum: AlertOption }) @IsOptional() @IsEnum(AlertOption) alertBefore?: AlertOption;
     @ApiPropertyOptional() @IsOptional() @IsString() patientName?: string;
+    @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
 }

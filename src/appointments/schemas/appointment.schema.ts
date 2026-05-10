@@ -26,8 +26,14 @@ export class CalendarEvent {
     @Prop()
     alertBefore: string; // 'none', 'min5', 'min15', 'min30', 'hour1', 'day1'
 
+    @Prop({ type: Types.ObjectId, ref: 'User' })
+    patientId: Types.ObjectId;
+
     @Prop()
     patientName: string;
+
+    @Prop({ default: 'PENDING' })
+    status: string; // 'PENDING', 'ACCEPTED', 'DECLINED'
 }
 
 export const CalendarEventSchema = SchemaFactory.createForClass(CalendarEvent);
